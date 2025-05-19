@@ -1,0 +1,22 @@
+{
+    "name": "actor",
+    "type": "module",
+    "main": "./dist/index.js",
+    "exports": {
+      "./core": "./dist/core/index.js",
+      "./pubsub": "./dist/pubsub/index.js",
+      "./sql": "./dist/sql/index.js"
+    },
+    "types": "./dist/index.d.ts",
+    "files": ["dist"],
+    "scripts": {
+      "deploy": "wrangler deploy",
+      "cf-typegen": "wrangler types",
+      "build": "tsc -b"
+    },
+    "devDependencies": {
+		"@cloudflare/workers-types": "^4.20250428.0",
+		"typescript": "^5.5.2",
+		"wrangler": "^3.114.0"
+	}
+  }

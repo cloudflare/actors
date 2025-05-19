@@ -1,0 +1,15 @@
+{
+    "name": "actor-core",
+    "private": true,
+    "version": "0.0.0",
+    "main": "../../dist/core/index.js",
+    "types": "../../dist/core/index.d.ts",
+    "scripts": {
+      "build": "tsc -p ."
+    },
+    "devDependencies": {
+		"@cloudflare/workers-types": "^4.20250428.0",
+		"typescript": "^5.5.2",
+		"wrangler": "^3.114.0"
+	}
+  }

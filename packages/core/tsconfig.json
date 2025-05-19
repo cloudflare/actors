@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "outDir": "../../dist/core",
+    "rootDir": "./src",
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "module": "ESNext",
+    "target": "ES2022",
+    "moduleResolution": "Node",
+    "types": ["@cloudflare/workers-types"],
+    "lib": ["ES2022"],
+    "strict": true
+  },
+  "include": ["src"]
+}
