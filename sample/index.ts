@@ -16,21 +16,26 @@ export class MyWorker extends Worker<Env> {
     }
 
     fetch(request: Request): Promise<Response> {
-        return Promise.resolve(new Response(`${this.state} Worker`));
-        // return fetchActor(this.env.MY_DURABLE_OBJECT, 'default', request);
+        // return Promise.resolve(new Response(`${this.state} Worker`));
+        return fetchActor(this.env.MY_DURABLE_OBJECT, 'default', request);
     }
 }
 
 
 // Actor class implementation
+// - Can we make the `constructor(..)` have only custom params inside it
 export class MyActor extends Actor<Env> {
+    static namespace(request: Request): string {
+        return "Hollywood"
+    }
+
     // Can `Actor` constructor ever support custom attributes instead of `ctx` and `env`?
     constructor(ctx: DurableObjectState, env: Env) {
         super(ctx, env);
     }
 
     async fetch(request: Request): Promise<Response> {
-        return new Response(`Actor`);
+        return new Response(`${MyActor.namespace!(request)} Actor`);
     }
 }
 

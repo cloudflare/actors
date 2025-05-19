@@ -71,7 +71,7 @@ export function entrypoint<E>(input: EntrypointInput<E>) {
     if (ObjectClass.prototype instanceof ExtendedActor) {
         const worker = {
             async fetch(request: Request, env: E, ctx: ExecutionContext): Promise<Response> {
-                const namespace = Object.values(env)[0] as DurableObjectNamespace;
+                const namespace = (env as Record<string, DurableObjectNamespace>)[Object.keys(env as object)[0]];
                 const idString = (ObjectClass as any).namespace(request);
                 const id = namespace.idFromName(idString);
                 const stub = namespace.get(id);
