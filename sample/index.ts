@@ -1,5 +1,5 @@
 import { DurableObjectState, DurableObjectNamespace, ExecutionContext } from "@cloudflare/workers-types";
-import { Actor, AutoWorker, entrypoint, fetchActor, Worker } from '../packages/core/src'
+import { Actor, AutoWorker, handler, fetchActor, Worker } from '../packages/core/src'
 
 interface Env {
     MY_DURABLE_OBJECT: DurableObjectNamespace;
@@ -17,7 +17,7 @@ export class MyWorker extends Worker<Env> {
 
     fetch(request: Request): Promise<Response> {
         // return Promise.resolve(new Response(`${this.state} Worker`));
-        return fetchActor(this.env.MY_DURABLE_OBJECT, 'default', request);
+        return fetchActor(this.env.MY_DURABLE_OBJECT, request, MyActor)
     }
 }
 
@@ -39,8 +39,8 @@ export class MyActor extends Actor<Env> {
     }
 }
 
-// export default entrypoint((request: Request) => {
+// export default handler((request: Request) => {
 //     return new Response('Lone Wolf')
 // })
-export default entrypoint(MyWorker); 
-// export default entrypoint(MyActor); 
+export default handler(MyWorker); 
+// export default handler(MyActor); 

@@ -34,17 +34,16 @@ let workerExport: ExportedHandler<any> = {
 
 type RequestHandler<E> = (request: Request, env?: E, ctx?: ExecutionContext) => Promise<Response> | Response;
 
-type EntrypointInput<E> = 
+type HandlerInput<E> = 
     | { new(): { fetch(request: Request, ctx: ExecutionContext, env: E): Promise<Response> } }
     | { new(state: DurableObjectState, env: E): DurableObject<E> }
     | RequestHandler<E>;
 
-export function entrypoint<E>(input: EntrypointInput<E>) {
+export function handler<E>(input: HandlerInput<E>) {
     // If input is a plain function (not a class), wrap it in a simple handler
     if (typeof input === 'function' && !input.prototype) {
         return {
             async fetch(request: Request, env: E, ctx: ExecutionContext): Promise<Response> {
-                // Call the handler function with all parameters
                 const handler = input as RequestHandler<E>;
                 const result = await handler(request, env, ctx);
                 return result;
@@ -85,14 +84,18 @@ export function entrypoint<E>(input: EntrypointInput<E>) {
     return workerExport;
 }
 
+// Keep entrypoint as an alias for backward compatibility
+export const entrypoint = handler;
+
 export { ExtendedActor as Actor, Worker, AutoWorker };
 
-export function fetchActor<T>(
+export function fetchActor<T extends { namespace(request: Request): string }>(
     namespace: DurableObjectNamespace,
-    name: string = 'default',
-    request: Request
+    request: Request,
+    ActorClass: T
 ): Promise<Response> {
-    const stubId = namespace.idFromName(name);
+    const idString = ActorClass.namespace(request);
+    const stubId = namespace.idFromName(idString);
     const stub = namespace.get(stubId);
     return stub.fetch(request);
 }
