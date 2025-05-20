@@ -2,6 +2,8 @@ import { DurableObject } from "cloudflare:workers";
 import { AutoWorker } from "./utils/autoworker";
 import { BrowsableHandler } from "./utils/browsable";
 
+export type ActorState = DurableObjectState
+
 abstract class Worker<T> {
     protected env!: T;
     protected ctx!: ExecutionContext;
@@ -14,16 +16,18 @@ export abstract class ExtendedActor<E> extends DurableObject<E> {
     protected sql!: SqlStorage;
     public database: BrowsableHandler;
     declare public ctx: DurableObjectState;
+    declare public env: E;
 
     static idFromRequest = (request: Request): string => {
         return new URL(request.url).pathname;
     };
 
-    constructor(ctx?: DurableObjectState, env?: E) {
+    constructor(ctx?: ActorState, env?: E) {
         if (ctx && env) {
             super(ctx, env);
             this.sql = ctx.storage.sql;
             this.ctx = ctx;
+            this.env = env;
             this.database = new BrowsableHandler(this.sql);
         } else {
             // @ts-ignore - This is handled internally by the framework
@@ -82,8 +86,24 @@ export function handler<E>(input: HandlerInput<E>) {
     if (ObjectClass.prototype instanceof ExtendedActor) {
         const worker = {
             async fetch(request: Request, env: E, ctx: ExecutionContext): Promise<Response> {
-                // Right now always just picks the 1st one, what happens when multiple are defined
-                const namespace = (env as Record<string, DurableObjectNamespace>)[Object.keys(env as object)[0]];
+                // Find the namespace that matches this class's name
+                const className = ObjectClass.name;
+                const envObj = env as Record<string, DurableObjectNamespace>;
+                
+                // Find the binding that matches this class name
+                const bindingName = Object.keys(envObj).find(key => {
+                    // Check both direct binding and __DURABLE_OBJECT_BINDINGS
+                    const directBinding = envObj[key];
+                    const binding = (env as any).__DURABLE_OBJECT_BINDINGS?.[key];
+                    // Match on either the direct binding name or the class_name in __DURABLE_OBJECT_BINDINGS
+                    return key === className || binding?.class_name === className;
+                });
+
+                if (!bindingName) {
+                    throw new Error(`No DurableObject binding found for class ${className}. Make sure it's defined in wrangler.jsonc`);
+                }
+
+                const namespace = envObj[bindingName];
                 const idString = (ObjectClass as any).idFromRequest(request);
                 const id = namespace.idFromName(idString);
                 const stub = namespace.get(id);
@@ -102,12 +122,12 @@ export const entrypoint = handler;
 
 export { ExtendedActor as Actor, Worker, AutoWorker };
 
-export function fetchActor<T extends { idFromRequest(request: Request): string }>(
+export function fetchActor<T>(
     namespace: DurableObjectNamespace,
     request: Request,
     ActorClass: T
 ): Promise<Response> {
-    const idString = ActorClass.idFromRequest(request);
+    const idString = (ActorClass as any).idFromRequest?.(request) ?? ExtendedActor.idFromRequest(request);
     const stubId = namespace.idFromName(idString);
     const stub = namespace.get(stubId);
     return stub.fetch(request);

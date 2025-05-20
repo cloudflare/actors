@@ -1,5 +1,5 @@
 {
-    "name": "actor",
+    "name": "actors",
     "type": "module",
     "main": "./dist/index.js",
     "exports": {

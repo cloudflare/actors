@@ -6,7 +6,8 @@
 	"migrations": [
 		{
 			"new_sqlite_classes": [
-				"MyActor"
+				"MyActor",
+                "MyActor2"
 			],
 			"tag": "v1"
 		}
@@ -15,7 +16,11 @@
 		"bindings": [
 			{
 				"class_name": "MyActor",
-				"name": "MY_DURABLE_OBJECT"
+				"name": "MyActor"
+			},
+            {
+				"class_name": "MyActor2",
+				"name": "MyActor2"
 			}
 		]
 	},
