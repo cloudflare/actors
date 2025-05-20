@@ -1,5 +1,6 @@
 import { DurableObject } from "cloudflare:workers";
 import { AutoWorker } from "./utils/autoworker";
+import { BrowsableHandler } from "./utils/browsable";
 
 abstract class Worker<T> {
     protected env!: T;
@@ -10,14 +11,25 @@ abstract class Worker<T> {
 
 // Extend Actor to handle initialization
 export abstract class ExtendedActor<E> extends DurableObject<E> {
-    protected sql: SqlStorage;
-    static namespace = (request: Request): string => {
+    protected sql!: SqlStorage;
+    public database: BrowsableHandler;
+    declare public ctx: DurableObjectState;
+
+    static idFromRequest = (request: Request): string => {
         return new URL(request.url).pathname;
     };
 
-    constructor(ctx: DurableObjectState, env: E) {
-        super(ctx, env);
-        this.sql = ctx.storage.sql;
+    constructor(ctx?: DurableObjectState, env?: E) {
+        if (ctx && env) {
+            super(ctx, env);
+            this.sql = ctx.storage.sql;
+            this.ctx = ctx;
+            this.database = new BrowsableHandler(this.sql);
+        } else {
+            // @ts-ignore - This is handled internally by the framework
+            super();
+            this.database = new BrowsableHandler(this.sql);
+        }
     }
 
     async fetch(request: Request): Promise<Response> {
@@ -70,8 +82,9 @@ export function handler<E>(input: HandlerInput<E>) {
     if (ObjectClass.prototype instanceof ExtendedActor) {
         const worker = {
             async fetch(request: Request, env: E, ctx: ExecutionContext): Promise<Response> {
+                // Right now always just picks the 1st one, what happens when multiple are defined
                 const namespace = (env as Record<string, DurableObjectNamespace>)[Object.keys(env as object)[0]];
-                const idString = (ObjectClass as any).namespace(request);
+                const idString = (ObjectClass as any).idFromRequest(request);
                 const id = namespace.idFromName(idString);
                 const stub = namespace.get(id);
                 return stub.fetch(request);
@@ -89,12 +102,12 @@ export const entrypoint = handler;
 
 export { ExtendedActor as Actor, Worker, AutoWorker };
 
-export function fetchActor<T extends { namespace(request: Request): string }>(
+export function fetchActor<T extends { idFromRequest(request: Request): string }>(
     namespace: DurableObjectNamespace,
     request: Request,
     ActorClass: T
 ): Promise<Response> {
-    const idString = ActorClass.namespace(request);
+    const idString = ActorClass.idFromRequest(request);
     const stubId = namespace.idFromName(idString);
     const stub = namespace.get(stubId);
     return stub.fetch(request);

@@ -1,4 +1,4 @@
-import { DurableObjectState, DurableObjectNamespace, ExecutionContext } from "@cloudflare/workers-types";
+import { DurableObjectState, DurableObjectNamespace } from "@cloudflare/workers-types";
 import { Actor, AutoWorker, handler, fetchActor, Worker } from '../packages/core/src'
 
 interface Env {
@@ -8,39 +8,50 @@ interface Env {
 
 // Worker class implementation
 export class MyWorker extends Worker<Env> {
-    state = '';
-
-    constructor() {
-        super();
-        this.state = 'Construction'
-    }
-
     fetch(request: Request): Promise<Response> {
-        // return Promise.resolve(new Response(`${this.state} Worker`));
+        // Can we remove the first param? Maybe the second?
         return fetchActor(this.env.MY_DURABLE_OBJECT, request, MyActor)
     }
 }
 
+// export default handler(MyWorker); 
+
 
 // Actor class implementation
-// - Can we make the `constructor(..)` have only custom params inside it
 export class MyActor extends Actor<Env> {
-    static namespace(request: Request): string {
-        return "Hollywood"
-    }
-
-    // Can `Actor` constructor ever support custom attributes instead of `ctx` and `env`?
-    constructor(ctx: DurableObjectState, env: Env) {
-        super(ctx, env);
-    }
-
     async fetch(request: Request): Promise<Response> {
-        return new Response(`${MyActor.namespace!(request)} Actor`);
+        return new Response(`${MyActor.idFromRequest(request)} Actor`);
     }
+
+    // actorDidStartup() {
+    //     //
+    // }
+
+    // actorDidShutdown() {
+    //     //
+    // }
+
+    // actorReceivedRequest(request: Request) {
+
+    // }
+
+    // actorSentResponse(response: Response) {
+
+    // }
+
+    // actorAlarmWillFire(alarm: Alarm) {
+
+    // }
+
+    // actorAlarmDidFire(alarm: Alarm) {
+
+    // }
 }
 
+// export default handler(MyActor); 
+
+
+// Empty implementation
 // export default handler((request: Request) => {
 //     return new Response('Lone Wolf')
 // })
-export default handler(MyWorker); 
-// export default handler(MyActor); 
