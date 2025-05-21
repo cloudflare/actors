@@ -1,62 +1,90 @@
-// DurableObjectState, DurableObjectNamespace, ExecutionContext, ExportedHandler
 import { DurableObject } from "cloudflare:workers";
-import { AutoWorker } from "./utils/autoworker";
 import { BrowsableHandler } from "./utils/browsable";
 import { env } from "cloudflare:workers";
 
+/**
+ * Alias type for DurableObjectState to match the adopted Actor nomenclature.
+ * This type represents the state of a Durable Object in Cloudflare Workers.
+ */
 export type ActorState = DurableObjectState
 
-abstract class Worker<T> {
+/**
+ * Base abstract class for Workers that provides common functionality and structure.
+ * @template T - The type of the environment object that will be available to the worker
+ */
+export abstract class Worker<T> {
     protected env!: T;
     protected ctx!: ExecutionContext;
-    
     abstract fetch(request: Request): Promise<Response>;
 }
 
-// Extend Actor to handle initialization
-export abstract class ExtendedActor<E> extends DurableObject<E> {
-    protected sql!: SqlStorage;
+/**
+ * Extended Actor class that provides additional functionality for Durable Objects.
+ * This class adds SQL storage capabilities and browsing functionality to the base DurableObject.
+ * @template E - The type of the environment object that will be available to the actor
+ */
+export abstract class Actor<E> extends DurableObject<E> {
     public database: BrowsableHandler;
-    declare public ctx: DurableObjectState;
-    declare public env: E;
 
+    /**
+     * Static method to extract an ID from a request URL. Default response is the pathname
+     * from the incoming URL.
+     * @param request - The incoming request
+     * @returns The pathname from the request URL as the ID
+     */
     static idFromRequest = (request: Request): string => {
         return new URL(request.url).pathname;
     };
 
+    /**
+     * Creates a new instance of Actor.
+     * @param ctx - The DurableObjectState for this actor
+     * @param env - The environment object containing bindings and configuration
+     */
     constructor(ctx?: ActorState, env?: E) {
         if (ctx && env) {
             super(ctx, env);
-            this.sql = ctx.storage.sql;
-            this.ctx = ctx;
-            this.env = env;
-            this.database = new BrowsableHandler(this.sql);
+            this.database = new BrowsableHandler(ctx.storage.sql);
         } else {
             // @ts-ignore - This is handled internally by the framework
             super();
-            this.database = new BrowsableHandler(this.sql);
+            this.database = new BrowsableHandler(undefined);
         }
     }
 
+    /**
+     * Abstract method that must be implemented by derived classes to handle incoming requests.
+     * @param request - The incoming request to handle
+     * @returns A Promise that resolves to a Response
+     */
     async fetch(request: Request): Promise<Response> {
         throw new Error('fetch() must be implemented in derived class');
     }
 }
 
-// Create a variable to hold the worker export
-let workerExport: ExportedHandler<any> = {
-    async fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
-        return new Response("Worker not initialized", { status: 500 });
-    }
-};
-
+/**
+ * Type definition for a request handler function.
+ * @template E - The type of the environment object
+ */
 type RequestHandler<E> = (request: Request, env?: E, ctx?: ExecutionContext) => Promise<Response> | Response;
 
+/**
+ * Union type for possible handler inputs.
+ * Can be either a class constructor or a request handler function.
+ * @template E - The type of the environment object
+ */
 type HandlerInput<E> = 
-    | { new(): { fetch(request: Request, ctx: ExecutionContext, env: E): Promise<Response> } }
-    | { new(state: DurableObjectState, env: E): DurableObject<E> }
-    | RequestHandler<E>;
+    | { new(): { fetch(request: Request, ctx: ExecutionContext, env: E): Promise<Response> } } // Worker
+    | { new(state: DurableObjectState, env: E): DurableObject<E> } // Actor
+    | RequestHandler<E>; // Empty callback
 
+/**
+ * Creates a handler for a Worker or Actor.
+ * This function can handle both class-based and function-based handlers.
+ * @template E - The type of the environment object
+ * @param input - The handler input (class or function)
+ * @returns An ExportedHandler that can be used as a Worker
+ */
 export function handler<E>(input: HandlerInput<E>) {
     // If input is a plain function (not a class), wrap it in a simple handler
     if (typeof input === 'function' && !input.prototype) {
@@ -72,8 +100,8 @@ export function handler<E>(input: HandlerInput<E>) {
     // Handle existing Worker and DurableObject cases
     const ObjectClass = input as (new () => any);
 
-    // Check if it's a StatelessObject (has a no-arg constructor)
-    if (ObjectClass && ObjectClass.length === 0) {
+    // Check if it's a Worker (has a no-arg constructor)
+    if (ObjectClass && ObjectClass.prototype instanceof Worker) {
         const statelessInstance = new (ObjectClass as new() => any)();
         return {
             fetch(request: Request, env: E, ctx: ExecutionContext): Promise<Response> {
@@ -84,69 +112,94 @@ export function handler<E>(input: HandlerInput<E>) {
         };
     }
 
-    // For Actor classes, automatically create the worker
-    if (ObjectClass.prototype instanceof ExtendedActor) {
+    // For Actor classes, automatically create the worker if Actor is being used as an entrypoint
+    if (ObjectClass.prototype instanceof Actor) {
         const worker = {
             async fetch(request: Request, env: E, ctx: ExecutionContext): Promise<Response> {
-                // Find the namespace that matches this class's name
-                const className = ObjectClass.name;
-                const envObj = env as Record<string, DurableObjectNamespace>;
-                
-                // Find the binding that matches this class name
-                const bindingName = Object.keys(envObj).find(key => {
-                    // Check both direct binding and __DURABLE_OBJECT_BINDINGS
-                    const directBinding = envObj[key];
-                    const binding = (env as any).__DURABLE_OBJECT_BINDINGS?.[key];
-                    // Match on either the direct binding name or the class_name in __DURABLE_OBJECT_BINDINGS
-                    return key === className || binding?.class_name === className;
-                });
+                try {
+                    // Find the namespace that matches this class's name
+                    const className = ObjectClass.name;
+                    const envObj = env as Record<string, DurableObjectNamespace>;
+                    
+                    // Find the binding that matches this class name
+                    const bindingName = Object.keys(envObj).find(key => {
+                        const binding = (env as any).__DURABLE_OBJECT_BINDINGS?.[key];
+                        return key === className || binding?.class_name === className;
+                    });
 
-                if (!bindingName) {
-                    throw new Error(`No DurableObject binding found for class ${className}. Make sure it's defined in wrangler.jsonc`);
+                    if (!bindingName) {
+                        return new Response(
+                            `No DurableObject binding found for class ${className}. Make sure it's defined in wrangler.jsonc`,
+                            { status: 404 }
+                        );
+                    }
+
+                    const namespace = envObj[bindingName];
+                    const idString = (ObjectClass as any).idFromRequest(request);
+                    const id = namespace.idFromName(idString);
+                    const stub = namespace.get(id);
+                    return stub.fetch(request);
+                } catch (error) {
+                    return new Response(
+                        `Error handling request: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                        { status: 500 }
+                    );
                 }
-
-                const namespace = envObj[bindingName];
-                const idString = (ObjectClass as any).idFromRequest(request);
-                const id = namespace.idFromName(idString);
-                const stub = namespace.get(id);
-                return stub.fetch(request);
             }
         };
+        
         return worker;
     }
 
-    // If no class provided or it's not an Actor, return workerExport
-    return workerExport;
+    // If no class provided or it's not an Actor, return a more informative error
+    return {
+        async fetch(request: Request): Promise<Response> {
+            return new Response(
+                "Invalid handler configuration. Please provide a valid Worker, Actor, or request handler function.",
+                { status: 400 }
+            );
+        }
+    };
 }
 
-// Keep entrypoint as an alias for backward compatibility
-export const entrypoint = handler;
-
-export { ExtendedActor as Actor, Worker, AutoWorker };
-
-export function fetchActor<T extends ExtendedActor<any>>(
+/**
+ * Utility function to fetch an Actor instance and handle a request.
+ * This is a convenience method for making requests to Durable Objects.
+ * @template T - The type of the Actor class
+ * @param request - The request to handle
+ * @param ActorClass - The class constructor for the Actor
+ * @returns A Promise that resolves to a Response
+ */
+export async function fetchActor<T extends Actor<any>>(
     request: Request,
     ActorClass: new (state: ActorState, env: any) => T
 ): Promise<Response> {
-    const className = ActorClass.name;
-    const envObj = env as Record<string, DurableObjectNamespace>;
-    
-    // Find the binding that matches this class name
-    const bindingName = Object.keys(envObj).find(key => {
-        // Check both direct binding and __DURABLE_OBJECT_BINDINGS
-        const directBinding = envObj[key];
-        const binding = (env as any).__DURABLE_OBJECT_BINDINGS?.[key];
-        // Match on either the direct binding name or the class_name in __DURABLE_OBJECT_BINDINGS
-        return key === className || binding?.class_name === className;
-    });
+    try {
+        const className = ActorClass.name;
+        const envObj = env as Record<string, DurableObjectNamespace>;
+        
+        // Find the binding that matches this class name
+        const bindingName = Object.keys(envObj).find(key => {
+            const binding = (env as any).__DURABLE_OBJECT_BINDINGS?.[key];
+            return key === className || binding?.class_name === className;
+        });
 
-    if (!bindingName) {
-        throw new Error(`No DurableObject binding found for class ${className}. Make sure it's defined in wrangler.jsonc`);
+        if (!bindingName) {
+            return new Response(
+                `No DurableObject binding found for class ${className}. Make sure it's defined in wrangler.jsonc`,
+                { status: 404 }
+            );
+        }
+
+        const namespace = envObj[bindingName];
+        const idString = (ActorClass as any).idFromRequest?.(request) ?? Actor.idFromRequest(request);
+        const stubId = namespace.idFromName(idString);
+        const stub = namespace.get(stubId);
+        return stub.fetch(request);
+    } catch (error) {
+        return new Response(
+            `Error fetching actor: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            { status: 500 }
+        );
     }
-
-    const namespace = envObj[bindingName];
-    const idString = (ActorClass as any).idFromRequest?.(request) ?? ExtendedActor.idFromRequest(request);
-    const stubId = namespace.idFromName(idString);
-    const stub = namespace.get(stubId);
-    return stub.fetch(request);
 }

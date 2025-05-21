@@ -1,79 +1,39 @@
-export const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PATCH, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers':
-        'Authorization, Content-Type, X-Starbase-Source, X-Data-Source',
-    'Access-Control-Max-Age': '86400',
-} as const
-
-export function corsPreflight(): Response {
-    return new Response(null, {
-        status: 204,
-        headers: corsHeaders,
-    })
-}
-
+/**
+ * Represents a transaction request containing multiple SQL queries to be executed.
+ */
 export type QueryTransactionRequest = {
     transaction?: QueryRequest[]
 }
 
+/**
+ * Represents a single SQL query request with optional parameters.
+ */
 export type QueryRequest = {
     sql: string
     params?: any[]
 }
 
-export function createResponse(
-    result: unknown,
-    error: string | undefined,
-    status: number
-): Response {
-    return new Response(JSON.stringify({ result, error }), {
-        status,
-        headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json',
-        },
-    })
-}
-
+/**
+ * Handler class for executing SQL queries and transactions against a SQL storage backend.
+ * Provides methods for executing single queries and transactions with proper error handling
+ * and result formatting.
+ */
 export class BrowsableHandler {
     public sql: SqlStorage | undefined;
-    private supportedRoutes = ['/query/raw'];
 
+    /**
+     * Creates a new instance of BrowsableHandler.
+     * @param sql - The SQL storage instance to use for queries
+     */
     constructor(sql: SqlStorage | undefined) {
         this.sql = sql;
     }
 
-    async fetch(request: Request) {
-        const url = new URL(request.url);
-        const path = url.pathname;
-
-        // Check if this is a supported route that we should handle in our browsable
-        // class. If no matches are found we call up to super and as a last resort
-        // return a 404 to let the user know this inheritance class did not find a 
-        // request to match on.
-        if (this.supportedRoutes.includes(path)) {
-            // Handle CORS preflight, at the moment this acts as a very permissive
-            // acceptance of requests. Expecting the users to add in their own
-            // version of authentication to protect against users misusing these
-            // endpoints.
-            if (request.method === 'OPTIONS') {
-                return corsPreflight();
-            }
-            
-            if (path === '/query/raw' && request.method === 'POST') {
-                const { sql, params, transaction } = (await request.json()) as any;
-                let data = await this.executeTransaction({
-                    queries: transaction ?? [{ sql, params }]
-                });
-
-                return createResponse(data, undefined, 200);
-            }
-        }
-        
-        return new Response('Not found', { status: 404 });
-    }
-
+    /**
+     * Executes a transaction containing multiple SQL queries.
+     * @param opts - Options containing an array of queries to execute
+     * @returns Promise resolving to an array of query results
+     */
     async executeTransaction(opts: {
         queries: { sql: string; params?: any[] }[]
     }): Promise<any> {
@@ -98,6 +58,13 @@ export class BrowsableHandler {
         return results
     }
 
+    /**
+     * Executes a raw SQL query with optional parameters.
+     * @template U - The type of the record containing the query results
+     * @param opts - Options containing the SQL query and optional parameters
+     * @returns Promise resolving to a cursor containing the query results
+     * @throws Error if the SQL execution fails
+     */
     private async executeRawQuery<
         U extends Record<string, SqlStorageValue> = Record<
             string,
@@ -122,6 +89,11 @@ export class BrowsableHandler {
         }
     }
 
+    /**
+     * Executes a SQL query and formats the results based on the specified options.
+     * @param opts - Options containing the SQL query, parameters, and result format preference
+     * @returns Promise resolving to either raw query results or formatted array
+     */
     public async executeQuery(opts: {
         sql: string
         params?: unknown[]

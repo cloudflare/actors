@@ -24,7 +24,10 @@ export class MyActor extends Actor<Env> {
 // 3 - Which can also call into this next Actor...
 export class MyActor2 extends Actor<Env> {
     static idFromRequest(request: Request): string {
-        return "Hollywood"
+        // Path should follow the pattern `/user/:id` and we should use the correct Actor instance
+        const url = new URL(request.url);
+        const pathParts = url.pathname.split('/');
+        return pathParts.length === 3 ? pathParts[2] : "default";
     }
 
     constructor(state: ActorState, env: Env) {
@@ -32,7 +35,8 @@ export class MyActor2 extends Actor<Env> {
     }
 
     async fetch(request: Request): Promise<Response> {
-        return new Response(`${MyActor2.idFromRequest(request)} - Actor 2`);
+        const result = await this.database.executeQuery({ sql: 'SELECT 4+5;', isRaw: true })
+        return new Response(`Actor ${MyActor2.idFromRequest(request)} - ${JSON.stringify(result)}`);
     }
 }
 

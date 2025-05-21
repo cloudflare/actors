@@ -4,8 +4,6 @@
     "main": "./dist/index.js",
     "exports": {
         "./core": "./dist/core/index.js",
-        "./pubsub": "./dist/pubsub/index.js",
-        "./sql": "./dist/sql/index.js"
     },
     "types": "./dist/index.d.ts",
     "files": [
