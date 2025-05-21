@@ -8,8 +8,9 @@
       "build": "tsc -p ."
     },
     "devDependencies": {
-		"@cloudflare/workers-types": "^4.20250428.0",
-		"typescript": "^5.5.2",
-		"wrangler": "^3.114.0"
+		"@cloudflare/vite-plugin": "1.2.2",
+        "typescript": "^5.5.2",
+        "vite": "^6.3.5",
+        "wrangler": "^4.16.0"
 	}
   }

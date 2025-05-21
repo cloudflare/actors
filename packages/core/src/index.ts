@@ -1,6 +1,8 @@
+// DurableObjectState, DurableObjectNamespace, ExecutionContext, ExportedHandler
 import { DurableObject } from "cloudflare:workers";
 import { AutoWorker } from "./utils/autoworker";
 import { BrowsableHandler } from "./utils/browsable";
+import { env } from "cloudflare:workers";
 
 export type ActorState = DurableObjectState
 
@@ -122,11 +124,27 @@ export const entrypoint = handler;
 
 export { ExtendedActor as Actor, Worker, AutoWorker };
 
-export function fetchActor<T>(
-    namespace: DurableObjectNamespace,
+export function fetchActor<T extends ExtendedActor<any>>(
     request: Request,
-    ActorClass: T
+    ActorClass: new (state: ActorState, env: any) => T
 ): Promise<Response> {
+    const className = ActorClass.name;
+    const envObj = env as Record<string, DurableObjectNamespace>;
+    
+    // Find the binding that matches this class name
+    const bindingName = Object.keys(envObj).find(key => {
+        // Check both direct binding and __DURABLE_OBJECT_BINDINGS
+        const directBinding = envObj[key];
+        const binding = (env as any).__DURABLE_OBJECT_BINDINGS?.[key];
+        // Match on either the direct binding name or the class_name in __DURABLE_OBJECT_BINDINGS
+        return key === className || binding?.class_name === className;
+    });
+
+    if (!bindingName) {
+        throw new Error(`No DurableObject binding found for class ${className}. Make sure it's defined in wrangler.jsonc`);
+    }
+
+    const namespace = envObj[bindingName];
     const idString = (ActorClass as any).idFromRequest?.(request) ?? ExtendedActor.idFromRequest(request);
     const stubId = namespace.idFromName(idString);
     const stub = namespace.get(stubId);

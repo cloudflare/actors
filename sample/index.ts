@@ -1,74 +1,45 @@
-import { DurableObjectNamespace } from "@cloudflare/workers-types";
-import { Actor, AutoWorker, handler, fetchActor, Worker, ActorState } from '../packages/core/src'
-
-// Ideal Optimizations:
-// - Remove the need for Wrangler definitions
-// - Remove the need to have all defined objects from Wrangler exported in this main file
-// - Remove the below Env interface
+import { env } from "cloudflare:workers";
+import { Actor, handler, fetchActor, Worker, ActorState } from '../packages/core/src'
 
 
-interface Env {
-    MyActor: DurableObjectNamespace;
-    MyActor2: DurableObjectNamespace;
-}
-
-
+// 1 - The entrypoint starts here..
 export class MyWorker extends Worker<Env> {
     fetch(request: Request): Promise<Response> {
-        return fetchActor(this.env.MyActor2, request, MyActor)
+        return fetchActor(request, MyActor)
     }
 }
 
-// export default handler(MyWorker); 
 
-
-
+// 2 - Which then calls this first Actor..
 export class MyActor extends Actor<Env> {
     constructor(state: ActorState, env: Env) {
         super(state, env);
     }
 
     async fetch(request: Request): Promise<Response> {
-        return new Response(`Actor`);
-
-        // Need to simplify to be two inputs
-        // return fetchActor(this.env.MyActor2, request, MyActor2)
+        return fetchActor(request, MyActor2)
     }
 }
 
-// Need to support multiple Actors
+// 3 - Which can also call into this next Actor...
 export class MyActor2 extends Actor<Env> {
+    static idFromRequest(request: Request): string {
+        return "Hollywood"
+    }
+
     constructor(state: ActorState, env: Env) {
         super(state, env);
     }
 
     async fetch(request: Request): Promise<Response> {
-        return new Response(`Actor 22`);
+        return new Response(`${MyActor2.idFromRequest(request)} - Actor 2`);
     }
 }
 
+
+export default handler(MyWorker); 
 // export default handler(MyActor); 
-
-
-// Actor class implementation
-// export class MyActor extends Actor<Env> {
-//     static idFromRequest(request: Request): string {
-//         return "Hollywood"
-//     }
-    
-//     constructor(state: DurableObjectState, env: Env) {
-//         super(state, env);
-//     }
-
-//     async fetch(request: Request): Promise<Response> {
-//         return new Response(`${MyActor.idFromRequest(request)} Actor`);
-//     }
-// }
-
-// export default handler(MyActor); 
-
-
-// Empty implementation
+// export default handler(MyActor2); 
 // export default handler((request: Request) => {
 //     return new Response('Lone Wolf')
 // })

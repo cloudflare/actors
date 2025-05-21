@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "../../dist/pubsub",
+    "rootDir": ".",
+    "composite": true
+  },
+  "include": ["**/*.ts"],
+  "references": [
+    { "path": "../core" }
+  ]
+} 
