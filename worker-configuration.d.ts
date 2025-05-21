@@ -3,8 +3,8 @@
 // Runtime types generated with workerd@1.20250508.0 2025-05-20 
 declare namespace Cloudflare {
 	interface Env {
-		MyActor: DurableObjectNamespace<import("./sample/index").MyActor>;
-		MyActor2: DurableObjectNamespace<import("./sample/index").MyActor2>;
+		MyActor: DurableObjectNamespace<import("./example/src/index").MyActor>;
+		MyActor2: DurableObjectNamespace<import("./example/src/index").MyActor2>;
 	}
 }
 interface Env extends Cloudflare.Env {}

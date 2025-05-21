@@ -1,6 +1,11 @@
 # Wrangler
 .wrangler
 
+# Build artifacts
+dist/
+worker-configuration.d.ts
+tsconfig.tsbuildinfo
+
 # Logs
 logs
 *.log

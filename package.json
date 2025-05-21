@@ -1,19 +1,44 @@
 {
     "name": "actors",
+    "version": "0.0.1",
+    "description": "A framework for building Cloudflare Workers using the Actor pattern",
     "type": "module",
     "main": "./dist/index.js",
     "exports": {
-        "./core": "./dist/core/index.js",
+        "./core": "./dist/core/index.js"
     },
     "types": "./dist/index.d.ts",
+    "typesVersions": {
+        "*": {
+            "core": ["./dist/core/index.d.ts"]
+        }
+    },
     "files": [
         "dist"
     ],
+    "sideEffects": false,
     "scripts": {
         "deploy": "wrangler deploy",
         "cf-typegen": "wrangler types",
         "build": "vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "clean": "rm -rf dist .wrangler worker-configuration.d.ts"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "keywords": [
+        "cloudflare",
+        "workers",
+        "actor",
+        "framework",
+        "distributed-systems"
+    ],
+    "author": "Cloudflare",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/cloudflare/actors"
     },
     "devDependencies": {
         "@cloudflare/vite-plugin": "1.2.2",

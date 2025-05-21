@@ -1,0 +1,15 @@
+{
+    "name": "@cloudflare/actors-example",
+    "private": true,
+    "type": "module",
+    "scripts": {
+      "dev": "vite",
+      "build": "vite build",
+      "deploy": "wrangler deploy"
+    },
+    "keywords": [],
+    "author": "",
+    "dependencies": {
+        
+    }
+  }

@@ -1,0 +1,33 @@
+# Source files
+packages/
+sample/
+src/
+
+# Development files
+.git/
+.github/
+.vscode/
+*.test.ts
+*.spec.ts
+tsconfig.json
+tsconfig.tsbuildinfo
+vite.config.ts
+wrangler.jsonc
+
+# Build and test artifacts
+.wrangler/
+coverage/
+.nyc_output/
+*.log
+*.tgz
+
+# Documentation
+*.md
+!README.md
+
+# Config files
+.eslintrc*
+.prettierrc*
+.editorconfig
+.gitignore
+.npmrc 

@@ -1,5 +1,4 @@
-import { env } from "cloudflare:workers";
-import { Actor, handler, fetchActor, Worker, ActorState } from '../packages/core/src'
+import { Actor, handler, fetchActor, Worker, ActorState } from '../../packages/core/src'
 
 
 // 1 - The entrypoint starts here..
