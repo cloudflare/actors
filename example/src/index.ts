@@ -39,10 +39,14 @@ export class MyActor2 extends Actor<Env> {
     }
 }
 
+// You can tell your incoming request to route to your Worker
+// export default handler(MyWorker); 
 
-export default handler(MyWorker); 
+// Try to skip the Worker and go direct to the Actor
 // export default handler(MyActor); 
-// export default handler(MyActor2); 
+export default handler(MyActor2); 
+
+// Also try returning a response without a Worker or an Actor
 // export default handler((request: Request) => {
 //     return new Response('Lone Wolf')
 // })

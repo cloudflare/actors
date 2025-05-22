@@ -5,11 +5,10 @@
     "scripts": {
       "dev": "vite",
       "build": "vite build",
-      "deploy": "wrangler deploy"
+      "deploy": "wrangler deploy",
+      "cf-typegen": "wrangler types"
     },
     "keywords": [],
     "author": "",
-    "dependencies": {
-        
-    }
+    "dependencies": {}
   }
