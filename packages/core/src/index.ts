@@ -1,4 +1,4 @@
-import { DurableObject } from "cloudflare:workers";
+import { DurableObject, WorkerEntrypoint } from "cloudflare:workers";
 import { BrowsableHandler } from "./utils/browsable";
 import { env } from "cloudflare:workers";
 
@@ -6,13 +6,13 @@ import { env } from "cloudflare:workers";
  * Alias type for DurableObjectState to match the adopted Actor nomenclature.
  * This type represents the state of a Durable Object in Cloudflare Workers.
  */
-export type ActorState = DurableObjectState
+export type ActorState = DurableObjectState;
 
 /**
  * Base abstract class for Workers that provides common functionality and structure.
  * @template T - The type of the environment object that will be available to the worker
  */
-export abstract class Worker<T> {
+export abstract class Worker<T> extends WorkerEntrypoint {
     protected env!: T;
     protected ctx!: ExecutionContext;
     abstract fetch(request: Request): Promise<Response>;
@@ -74,7 +74,7 @@ type RequestHandler<E> = (request: Request, env?: E, ctx?: ExecutionContext) => 
  * @template E - The type of the environment object
  */
 type HandlerInput<E> = 
-    | { new(): { fetch(request: Request, ctx: ExecutionContext, env: E): Promise<Response> } } // Worker
+    | { new(ctx: ExecutionContext, env: E): { fetch(request: Request): Promise<Response> } } // Worker
     | { new(state: DurableObjectState, env: E): DurableObject<E> } // Actor
     | RequestHandler<E>; // Empty callback
 
@@ -102,12 +102,10 @@ export function handler<E>(input: HandlerInput<E>) {
 
     // Check if it's a Worker (has a no-arg constructor)
     if (ObjectClass && ObjectClass.prototype instanceof Worker) {
-        const statelessInstance = new (ObjectClass as new() => any)();
         return {
             fetch(request: Request, env: E, ctx: ExecutionContext): Promise<Response> {
-                statelessInstance.env = env;
-                statelessInstance.ctx = ctx;
-                return statelessInstance.fetch(request);
+                const instance = new (ObjectClass as new(ctx: ExecutionContext, env: E) => any)(ctx, env);
+                return instance.fetch(request);
             }
         };
     }

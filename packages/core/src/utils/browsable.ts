@@ -1,11 +1,4 @@
 /**
- * Represents a transaction request containing multiple SQL queries to be executed.
- */
-export type QueryTransactionRequest = {
-    transaction?: QueryRequest[]
-}
-
-/**
  * Represents a single SQL query request with optional parameters.
  */
 export type QueryRequest = {
@@ -27,35 +20,6 @@ export class BrowsableHandler {
      */
     constructor(sql: SqlStorage | undefined) {
         this.sql = sql;
-    }
-
-    /**
-     * Executes a transaction containing multiple SQL queries.
-     * @param opts - Options containing an array of queries to execute
-     * @returns Promise resolving to an array of query results
-     */
-    async executeTransaction(opts: {
-        queries: { sql: string; params?: any[] }[]
-    }): Promise<any> {
-        const { queries } = opts
-        const results = []
-    
-        for (const query of queries) {
-            let result = await this.executeQuery({
-                sql: query.sql,
-                params: query.params ?? [],
-                isRaw: true
-            })
-    
-            if (!result) {
-                console.error('Returning empty array.')
-                return []
-            }
-    
-            results.push(result)
-        }
-    
-        return results
     }
 
     /**
