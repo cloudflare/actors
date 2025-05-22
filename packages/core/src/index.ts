@@ -37,6 +37,15 @@ export abstract class Actor<E> extends DurableObject<E> {
     };
 
     /**
+     * Static method to get an actor instance by ID
+     * @param id - The ID of the actor to get
+     * @returns The actor instance
+     */
+    static get<T extends Actor<any>>(this: new (state: ActorState, env: any) => T, id: string): DurableObjectStub<T> | undefined {
+        return getActor(this, id);
+    }
+
+    /**
      * Creates a new instance of Actor.
      * @param ctx - The DurableObjectState for this actor
      * @param env - The environment object containing bindings and configuration
@@ -174,25 +183,16 @@ export async function fetchActor<T extends Actor<any>>(
 ): Promise<Response> {
     try {
         const className = ActorClass.name;
-        const envObj = env as Record<string, DurableObjectNamespace>;
-        
-        // Find the binding that matches this class name
-        const bindingName = Object.keys(envObj).find(key => {
-            const binding = (env as any).__DURABLE_OBJECT_BINDINGS?.[key];
-            return key === className || binding?.class_name === className;
-        });
+        const idString = (ActorClass as any).idFromRequest?.(request) ?? Actor.idFromRequest(request);
+        const stub = getActor(ActorClass, idString);
 
-        if (!bindingName) {
+        if (!stub) {
             return new Response(
                 `No DurableObject binding found for class ${className}. Make sure it's defined in wrangler.jsonc`,
                 { status: 404 }
             );
         }
 
-        const namespace = envObj[bindingName];
-        const idString = (ActorClass as any).idFromRequest?.(request) ?? Actor.idFromRequest(request);
-        const stubId = namespace.idFromName(idString);
-        const stub = namespace.get(stubId);
         return stub.fetch(request);
     } catch (error) {
         return new Response(
@@ -200,4 +200,23 @@ export async function fetchActor<T extends Actor<any>>(
             { status: 500 }
         );
     }
+}
+
+export function getActor<T extends Actor<any>>(
+    ActorClass: new (state: ActorState, env: any) => T,
+    id: string
+): DurableObjectStub<T> | undefined {
+    const className = ActorClass.name;
+    const envObj = env as Record<string, DurableObjectNamespace>;
+    
+    const bindingName = Object.keys(envObj).find(key => {
+        const binding = (env as any).__DURABLE_OBJECT_BINDINGS?.[key];
+        return key === className || binding?.class_name === className;
+    });
+
+    if (!bindingName) return undefined;
+
+    const namespace = envObj[bindingName];
+    const stubId = namespace.idFromName(id);
+    return namespace.get(stubId) as DurableObjectStub<T>;
 }

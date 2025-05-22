@@ -1,16 +1,21 @@
-import { Actor, handler, fetchActor, Worker, ActorState } from '../../packages/core/src'
+import { Actor, handler, fetchActor, Worker, ActorState, getActor } from '../../packages/core/src'
 
 // Worker extend WorkerEntrypoint           <-- DONE
 // Binding to a DO from another Worker
-// What does this look like with RPC
+// What does this look like with RPC        <-- DONE
 // What do websockets look like
-// Remote executeTransaction
+// Remove executeTransaction                <-- DONE
 
 // 1 - The entrypoint starts here..
-export class MyWorker extends Worker<Env> {
-    fetch(request: Request): Promise<Response> {
+export default class MyWorker extends Worker<Env> {
+    async fetch(request: Request): Promise<Response> {
         // return new Response('Worker')
-        return fetchActor(request, MyActor)
+        
+        const actor2 = MyActor2.get('default');
+        const total = await actor2?.customTestFunc(400, 200);
+
+        return new Response(`Worker Count: ${total}`)
+        // return fetchActor(request, MyActor)
     }
 }
 
@@ -43,10 +48,14 @@ export class MyActor2 extends Actor<Env> {
         const result = await this.database.executeQuery({ sql: 'SELECT 4+5;', isRaw: true })
         return new Response(`Actor ${MyActor2.idFromRequest(request)} - ${JSON.stringify(result)}`);
     }
+
+    public customTestFunc(a: number, b: number): number {
+        return a + b;
+    }
 }
 
 // You can tell your incoming request to route to your Worker
-export default handler(MyWorker); 
+// export default handler(MyWorker); 
 
 // Try to skip the Worker and go direct to the Actor
 // export default handler(MyActor); 
