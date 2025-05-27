@@ -53,7 +53,7 @@ export abstract class Actor<E> extends DurableObject<E> {
     constructor(ctx?: ActorState, env?: E) {
         if (ctx && env) {
             super(ctx, env);
-            this.database = new BrowsableHandler(ctx.storage.sql);
+            this.database = new BrowsableHandler(ctx.storage);
         } else {
             // @ts-ignore - This is handled internally by the framework
             super();

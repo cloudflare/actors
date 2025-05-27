@@ -7,6 +7,13 @@ export type QueryRequest = {
 }
 
 /**
+ * Interface for SQL storage with transaction support
+ */
+interface SqlStorage {
+    exec(sql: string, ...params: unknown[]): any;
+}
+
+/**
  * Handler class for executing SQL queries and transactions against a SQL storage backend.
  * Provides methods for executing single queries and transactions with proper error handling
  * and result formatting.
@@ -17,38 +24,38 @@ export class BrowsableHandler {
     /**
      * Creates a new instance of BrowsableHandler.
      * @param sql - The SQL storage instance to use for queries
+     * @param storage - The Durable Object storage instance
      */
-    constructor(sql: SqlStorage | undefined) {
-        this.sql = sql;
+    constructor(storage?: DurableObjectStorage) {
+        this.sql = storage?.sql;
     }
 
     /**
      * Executes a raw SQL query with optional parameters.
-     * @template U - The type of the record containing the query results
      * @param opts - Options containing the SQL query and optional parameters
      * @returns Promise resolving to a cursor containing the query results
      * @throws Error if the SQL execution fails
      */
-    private async executeRawQuery<
-        U extends Record<string, SqlStorageValue> = Record<
-            string,
-            SqlStorageValue
-        >,
-    >(opts: { sql: string; params?: unknown[] }) {
+    private async executeRawQuery(opts: { sql: string; params?: unknown[] }) {
         const { sql, params } = opts
 
         try {
-            let cursor
+            let cursor;
 
             if (params && params.length) {
-                cursor = this.sql?.exec<U>(sql, ...params)
+                cursor = this.sql?.exec(sql, ...params)
             } else {
-                cursor = this.sql?.exec<U>(sql)
+                cursor = this.sql?.exec(sql)
             }
 
-            return cursor
+            if (!cursor) {
+                console.log('No cursor returned from query');
+                return null;
+            }
+
+            return cursor;
         } catch (error) {
-            console.error('SQL Execution Error:', error)
+            console.error('SQL Execution Error:', error);
             throw error
         }
     }
@@ -58,7 +65,7 @@ export class BrowsableHandler {
      * @param opts - Options containing the SQL query, parameters, and result format preference
      * @returns Promise resolving to either raw query results or formatted array
      */
-    public async executeQuery(opts: {
+    public async query(opts: {
         sql: string
         params?: unknown[]
         isRaw?: boolean
