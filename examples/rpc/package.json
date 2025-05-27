@@ -1,0 +1,14 @@
+{
+    "name": "@cloudflare/actors-example",
+    "private": true,
+    "type": "module",
+    "scripts": {
+      "dev": "vite",
+      "build": "vite build",
+      "deploy": "wrangler deploy",
+      "cf-typegen": "wrangler types"
+    },
+    "keywords": [],
+    "author": "",
+    "dependencies": {}
+  }
