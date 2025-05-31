@@ -13,12 +13,25 @@ interface SqlStorage {
     exec(sql: string, ...params: unknown[]): any;
 }
 
+interface StudioQueryRequest {
+	type: 'query';
+	statement: string;
+}
+
+interface StudioTransactionRequest {
+	type: 'transaction';
+	statements: string[];
+}
+
+type StudioRequest = StudioQueryRequest | StudioTransactionRequest;
+
 /**
  * Handler class for executing SQL queries and transactions against a SQL storage backend.
  * Provides methods for executing single queries and transactions with proper error handling
  * and result formatting.
  */
 export class BrowsableHandler {
+    public storage: DurableObjectStorage | undefined;
     public sql: SqlStorage | undefined;
 
     /**
@@ -27,6 +40,7 @@ export class BrowsableHandler {
      * @param storage - The Durable Object storage instance
      */
     constructor(storage?: DurableObjectStorage) {
+        this.storage = storage;
         this.sql = storage?.sql;
     }
 
@@ -65,15 +79,11 @@ export class BrowsableHandler {
      * @param opts - Options containing the SQL query, parameters, and result format preference
      * @returns Promise resolving to either raw query results or formatted array
      */
-    public async query(opts: {
-        sql: string
-        params?: unknown[]
-        isRaw?: boolean
-    }) {
-        const cursor = await this.executeRawQuery(opts)
+    public async query(sql: string, params?: unknown[], isRaw?: boolean) {
+        const cursor = await this.executeRawQuery({ sql, params })
         if (!cursor) return []
 
-        if (opts.isRaw) {
+        if (isRaw) {
             return {
                 columns: cursor.columnNames,
                 rows: Array.from(cursor.raw()),
@@ -85,5 +95,22 @@ export class BrowsableHandler {
         }
 
         return cursor.toArray()
+    }
+
+    async __studio(cmd: StudioRequest) {
+        const storage = this.storage as DurableObjectStorage;
+
+        if (cmd.type === 'query') {
+            return this.query(cmd.statement);
+        } else if (cmd.type === 'transaction') {
+            return storage.transactionSync(() => {
+                const results = [];
+                for (const statement of cmd.statements) {
+                    results.push(this.query(statement));
+                }
+
+                return results;
+            });
+        }
     }
 }

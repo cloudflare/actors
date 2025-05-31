@@ -26,13 +26,17 @@ export abstract class Worker<T> extends WorkerEntrypoint {
 export abstract class Actor<E> extends DurableObject<E> {
     public database: BrowsableHandler;
 
+    public __studio(_: any) {
+        return this.database.__studio(_);
+    }
+
     /**
      * Static method to extract an ID from a request URL. Default response is the pathname
      * from the incoming URL.
      * @param request - The incoming request
      * @returns The pathname from the request URL as the ID
      */
-    static idFromRequest = (request: Request): string => {
+    static idFromName = (request: Request): string => {
         return new URL(request.url).pathname;
     };
 
@@ -95,10 +99,94 @@ type HandlerInput<E> =
  * @returns An ExportedHandler that can be used as a Worker
  */
 export function handler<E>(input: HandlerInput<E>) {
+    // Create a common function to check for /__studio path
+    const handleStudioPath = async (request: Request, env: E): Promise<Promise<Response> | null> => {
+        const url = new URL(request.url);
+        if (url.pathname === '/__studio') {
+            // Verify that the request originates from dash.cloudflare.com
+            const referer = request.headers.get('Referer');
+            const origin = request.headers.get('Origin');
+            
+            // Check if the request is from dash.cloudflare.com
+            // Not sold on this approach yet, easy to spoof.
+            // const isFromCloudflare = 
+            //     (referer && new URL(referer).hostname === 'dash.cloudflare.com') || 
+            //     (origin && new URL(origin).hostname === 'dash.cloudflare.com');
+                
+            // if (!isFromCloudflare) {
+            //     return Promise.resolve(new Response('Unauthorized', { status: 403 }));
+            // }
+
+            // Only accept POST requests
+            if (request.method !== 'POST') {
+                return Promise.resolve(new Response('Method not allowed', { status: 405 }));
+            }
+            
+            // Extract payload from request body
+            let payload: { class: string; id: string; statement: string; };
+            try {
+                const jsonData = await request.json() as Record<string, unknown>;
+                
+                // Validate required fields
+                if (!jsonData.class || !jsonData.id || !jsonData.statement || 
+                    typeof jsonData.class !== 'string' || 
+                    typeof jsonData.id !== 'string' || 
+                    typeof jsonData.statement !== 'string') {
+                    return Promise.resolve(new Response('Missing required fields: class, id, or statement', { 
+                        status: 400,
+                        headers: { 'Content-Type': 'application/json' }
+                    }));
+                }
+                
+                payload = {
+                    class: jsonData.class,
+                    id: jsonData.id,
+                    statement: jsonData.statement
+                };
+            } catch (error) {
+                return Promise.resolve(new Response('Invalid JSON payload', { 
+                    status: 400,
+                    headers: { 'Content-Type': 'application/json' }
+                }));
+            }
+            
+            // Check if the class exists in the environment
+            if (!(payload.class in (env as Record<string, unknown>))) {
+                return Promise.resolve(new Response(`Class '${payload.class}' not found in environment`, { 
+                    status: 404,
+                    headers: { 'Content-Type': 'application/json' }
+                }));
+            }
+            
+            let result;
+            try {
+                const stubId = (env as Record<string, DurableObjectNamespace>)[payload.class].idFromName(payload.id);
+                const stub = (env as Record<string, DurableObjectNamespace>)[payload.class].get(stubId) as unknown as Actor<E>;
+                result = await stub.__studio({ type: 'query', statement: payload.statement });
+            } catch (error) {
+                return Promise.resolve(new Response(`Error executing studio command: ${error instanceof Error ? error.message : String(error)}`, {
+                    status: 500,
+                    headers: { 'Content-Type': 'application/json' }
+                }));
+            }
+            
+            return Promise.resolve(new Response(JSON.stringify(result), {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' }
+            }));
+        }
+        return null;
+    };
+
     // If input is a plain function (not a class), wrap it in a simple handler
     if (typeof input === 'function' && !input.prototype) {
         return {
             async fetch(request: Request, env: E, ctx: ExecutionContext): Promise<Response> {
+                // Check for /__studio path first
+                const studioResponse = await handleStudioPath(request, env);
+                if (studioResponse) return studioResponse;
+                
+                // Proceed with normal execution
                 const handler = input as RequestHandler<E>;
                 const result = await handler(request, env, ctx);
                 return result;
@@ -112,7 +200,12 @@ export function handler<E>(input: HandlerInput<E>) {
     // Check if it's a Worker (has a no-arg constructor)
     if (ObjectClass && ObjectClass.prototype instanceof Worker) {
         return {
-            fetch(request: Request, env: E, ctx: ExecutionContext): Promise<Response> {
+            async fetch(request: Request, env: E, ctx: ExecutionContext): Promise<Response> {
+                // Check for /__studio path first
+                const studioResponse = await handleStudioPath(request, env);
+                if (studioResponse) return studioResponse;
+
+                // Proceed with normal execution
                 const instance = new (ObjectClass as new(ctx: ExecutionContext, env: E) => any)(ctx, env);
                 return instance.fetch(request);
             }
@@ -123,6 +216,10 @@ export function handler<E>(input: HandlerInput<E>) {
     if (ObjectClass.prototype instanceof Actor) {
         const worker = {
             async fetch(request: Request, env: E, ctx: ExecutionContext): Promise<Response> {
+                // Check for /__studio path first
+                const studioResponse = await handleStudioPath(request, env);
+                if (studioResponse) return studioResponse;
+                
                 try {
                     // Find the namespace that matches this class's name
                     const className = ObjectClass.name;
@@ -142,7 +239,7 @@ export function handler<E>(input: HandlerInput<E>) {
                     }
 
                     const namespace = envObj[bindingName];
-                    const idString = (ObjectClass as any).idFromRequest(request);
+                    const idString = (ObjectClass as any).idFromName(request);
                     const id = namespace.idFromName(idString);
                     const stub = namespace.get(id);
                     return stub.fetch(request);
@@ -183,7 +280,7 @@ export async function fetchActor<T extends Actor<any>>(
 ): Promise<Response> {
     try {
         const className = ActorClass.name;
-        const idString = (ActorClass as any).idFromRequest?.(request) ?? Actor.idFromRequest(request);
+        const idString = (ActorClass as any).idFromName?.(request) ?? Actor.idFromName(request);
         const stub = getActor(ActorClass, idString);
 
         if (!stub) {

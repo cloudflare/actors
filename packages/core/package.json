@@ -8,9 +8,9 @@
       "build": "tsc -p ."
     },
     "devDependencies": {
-		"@cloudflare/vite-plugin": "1.2.2",
-        "typescript": "^5.5.2",
-        "vite": "^6.3.5",
-        "wrangler": "^4.16.0"
+      "@cloudflare/vite-plugin": "1.2.2",
+      "typescript": "^5.5.2",
+      "vite": "^6.3.5",
+      "wrangler": "^4.16.0"
 	}
   }
