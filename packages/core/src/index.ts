@@ -1,5 +1,5 @@
 import { DurableObject, WorkerEntrypoint } from "cloudflare:workers";
-import { BrowsableHandler } from "./utils/browsable";
+import { Storage } from "../../storage/src/index";
 import { env } from "cloudflare:workers";
 
 /**
@@ -24,10 +24,20 @@ export abstract class Worker<T> extends WorkerEntrypoint {
  * @template E - The type of the environment object that will be available to the actor
  */
 export abstract class Actor<E> extends DurableObject<E> {
-    public database: BrowsableHandler;
+    public identifier?: string;
+    public storage: Storage; // BrowsableHandler; // Storage instead of BrowsableHandler
 
     public __studio(_: any) {
-        return this.database.__studio(_);
+        return this.storage.__studio(_);
+    }
+
+    public setIdentifier(id: string) {
+        this.identifier = id;
+        
+        // If storage is being used or an alarm exists, store this identifier into a metadata
+        // SQLite table for referencing later. Currently being able to self refernece an instances
+        // identifier from alarms for example is not possible.
+        
     }
 
     /**
@@ -38,6 +48,9 @@ export abstract class Actor<E> extends DurableObject<E> {
      */
     static idFromName = (request: Request): string => {
         return new URL(request.url).pathname;
+
+        // Or should instead the default implementation be
+        // return "default"
     };
 
     /**
@@ -55,13 +68,14 @@ export abstract class Actor<E> extends DurableObject<E> {
      * @param env - The environment object containing bindings and configuration
      */
     constructor(ctx?: ActorState, env?: E) {
+        console.log('Actor constructor called')
         if (ctx && env) {
             super(ctx, env);
-            this.database = new BrowsableHandler(ctx.storage);
+            this.storage = new Storage(ctx.storage);
         } else {
             // @ts-ignore - This is handled internally by the framework
             super();
-            this.database = new BrowsableHandler(undefined);
+            this.storage = new Storage(undefined);
         }
     }
 
@@ -91,21 +105,47 @@ type HandlerInput<E> =
     | { new(state: DurableObjectState, env: E): DurableObject<E> } // Actor
     | RequestHandler<E>; // Empty callback
 
+type HandlerOptions = {
+    studio?: {
+        // Password for protection against unauthorized access
+        password?: string;
+        // Enable or disable observability
+        enabled: boolean;
+    };
+    track?: {
+        // Table where actor metadata is stored. Defaults to `_cf_actors` and is an independent durable object.
+        trackingInstance?: string;
+        // Note: this will use storage which will prevent your instance from every being fully removed
+        enabled: boolean;
+    }
+};
+
 /**
  * Creates a handler for a Worker or Actor.
  * This function can handle both class-based and function-based handlers.
  * @template E - The type of the environment object
  * @param input - The handler input (class or function)
+ * @param opts - Optional options for Studio integration
  * @returns An ExportedHandler that can be used as a Worker
  */
-export function handler<E>(input: HandlerInput<E>) {
+export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
     // Create a common function to check for /__studio path
     const handleStudioPath = async (request: Request, env: E): Promise<Promise<Response> | null> => {
+        // If the user has not opted into Studio, then this experience should not be made reachable to the instance.
+        if (!opts?.studio?.enabled) return null;
+
         const url = new URL(request.url);
         if (url.pathname === '/__studio') {
             // Verify that the request originates from dash.cloudflare.com
             const referer = request.headers.get('Referer');
             const origin = request.headers.get('Origin');
+            const authentication = request.headers.get('X-Studio-Authentication');
+
+            // If a Studio password value exists, then the authentication value must match to be able to
+            // access the functionality.
+            if (opts?.studio?.password && (!authentication || authentication !== opts.studio.password)) {
+                return Promise.resolve(new Response('Unauthorized', { status: 403 }));
+            }
             
             // Check if the request is from dash.cloudflare.com
             // Not sold on this approach yet, easy to spoof.
@@ -241,7 +281,21 @@ export function handler<E>(input: HandlerInput<E>) {
                     const namespace = envObj[bindingName];
                     const idString = (ObjectClass as any).idFromName(request);
                     const id = namespace.idFromName(idString);
-                    const stub = namespace.get(id);
+                    const stub = namespace.get(id) as unknown as Actor<E>;
+                    stub.setIdentifier(idString);
+
+                    // // If tracking is enabled, track the current actor identifier in a separate durable object.
+                    if (opts?.track?.enabled) {
+                        const trackingNamespace = envObj[bindingName];
+                        const trackingIdString = (ObjectClass as any).idFromName(request);
+                        const trackingId = trackingNamespace.idFromName('_cf_actors');
+                        const trackingStub = trackingNamespace.get(trackingId) as unknown as Actor<E>;
+                        trackingStub.setIdentifier(trackingIdString);
+                        
+                        await trackingStub.__studio({ type: 'query', statement: 'CREATE TABLE IF NOT EXISTS actors (identifier TEXT PRIMARY KEY)' });
+                        await trackingStub.__studio({ type: 'query', statement: `INSERT OR IGNORE INTO actors (identifier) VALUES ('${trackingIdString}')` });
+                    }
+
                     return stub.fetch(request);
                 } catch (error) {
                     return new Response(
@@ -290,6 +344,7 @@ export async function fetchActor<T extends Actor<any>>(
             );
         }
 
+        stub.setIdentifier(idString);
         return stub.fetch(request);
     } catch (error) {
         return new Response(

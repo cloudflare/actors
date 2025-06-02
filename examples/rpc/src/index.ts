@@ -1,5 +1,13 @@
-import { Container } from "cf-containers"
 import { Actor, handler, fetchActor, Worker } from '../../../packages/core/src'
+
+// [ ] Take `core` folder away, put it at root
+// [X] Add `storage` folder for storage functions (Browsable)
+// [ ] Add `alarms` folder for alarms functions
+// [ ] Store self identifier in storage (if storage exists, or if alarm exists)
+// [X] Can we have a handler option for `_cf_index` or something that tracks all idFromName values used to easily view?
+// [X] Actors should use `Storage` instead of `BrowsableHandler`
+// [X] `Storage` should be usable outside of actors
+// [ ] Right now identifiers are only stored if go through `handler` not if called from another
 
 // Example worker with RPC call into actor
 export class MyWorker extends Worker<Env> {
@@ -18,14 +26,18 @@ export class MyActor extends Actor<Env> {
     }
 
     async fetch(request: Request): Promise<Response> {
-        const actor = MyActor2.get('default') as unknown as MyActor2;
-        const test = await actor?.__studio({ type: 'query', id: 'default', statement: 'SELECT 1+1;' });
+        // const test = await this.storage?.query('SELECT 1+3;');
+        // return new Response(`Actor ${this.identifier} = ${JSON.stringify(test2)}`)
 
-        return new Response(`Actor = ${JSON.stringify(test)}`)
+        // const actor = MyActor2.get('default') as unknown as MyActor2;
+        const test = await this?.storage?.query('SELECT 1+2;');
+        // const test = await actor?.__studio({ type: 'query', id: 'default', statement: 'SELECT 1+1;' });
+
 
         // const total = await actor?.add(400, 200);
-        // const query = await actor?.database.query(`SELECT 1+1;`);
+        // const query = await actor?.storage.query(`SELECT 1+1;`);
 
+        return new Response(`Actor ${this.identifier} = ${JSON.stringify(test)}`)
         // return new Response(`MyActor query = ${JSON.stringify(query)}`)
         // return new Response(`Actor Count: ${total} - ${MyActor.idFromName(request)}`)
     }
@@ -34,8 +46,7 @@ export class MyActor extends Actor<Env> {
 // Example actor with database querying
 export class MyActor2 extends Actor<Env> {
     async fetch(request: Request): Promise<Response> {
-        const query = await this.database.query(`SELECT 1+1;`);
-
+        const query = await this.storage.query(`SELECT 1+2;`);
         return new Response(`Actor Query: ${JSON.stringify(query)}`)
     }
 
@@ -48,7 +59,15 @@ export class MyActor2 extends Actor<Env> {
 // export default handler(MyWorker); 
 
 // Try to skip the Worker and go direct to an Actor
-export default handler(MyActor); 
+export default handler(MyActor, { 
+    studio: {
+        enabled: true,
+        password: 'password'
+    },
+    track: {
+        enabled: true
+    }
+}); 
 // export default handler(MyActor2); 
 
 // Also try returning a response without a Worker or an Actor

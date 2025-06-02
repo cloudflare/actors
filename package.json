@@ -5,12 +5,14 @@
     "type": "module",
     "main": "./dist/index.js",
     "exports": {
-        "./core": "./dist/core/index.js"
+        "./core": "./dist/core/index.js",
+        "./storage": "./dist/storage/index.js"
     },
     "types": "./dist/index.d.ts",
     "typesVersions": {
         "*": {
-            "core": ["./dist/core/index.d.ts"]
+            "core": ["./dist/core/index.d.ts"],
+            "storage": ["./dist/storage/index.d.ts"]
         }
     },
     "files": [

@@ -30,12 +30,12 @@ type StudioRequest = StudioQueryRequest | StudioTransactionRequest;
  * Provides methods for executing single queries and transactions with proper error handling
  * and result formatting.
  */
-export class BrowsableHandler {
+export class Storage {
     public storage: DurableObjectStorage | undefined;
     public sql: SqlStorage | undefined;
 
     /**
-     * Creates a new instance of BrowsableHandler.
+     * Creates a new instance of Storage.
      * @param sql - The SQL storage instance to use for queries
      * @param storage - The Durable Object storage instance
      */
