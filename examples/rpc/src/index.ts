@@ -4,10 +4,10 @@ import { Actor, handler, fetchActor, Worker } from '../../../packages/core/src'
 // [X] Add `storage` folder for storage functions (Browsable)
 // [ ] Add `alarms` folder for alarms functions
 // [ ] Store self identifier in storage (if storage exists, or if alarm exists)
+// [ ] Right now identifiers are only stored if go through `handler` not if called from another
 // [X] Can we have a handler option for `_cf_index` or something that tracks all idFromName values used to easily view?
 // [X] Actors should use `Storage` instead of `BrowsableHandler`
 // [X] `Storage` should be usable outside of actors
-// [ ] Right now identifiers are only stored if go through `handler` not if called from another
 
 // Example worker with RPC call into actor
 export class MyWorker extends Worker<Env> {
@@ -16,9 +16,16 @@ export class MyWorker extends Worker<Env> {
     }
 }
 
-// Example actor with RPC function
 export class MyActor extends Actor<Env> {
-    static idFromName(request: Request): string {
+    async fetch(request: Request): Promise<Response> {
+        return new Response(`Hello, World!`)
+    }
+}
+
+
+// Example actor with RPC function
+export class MyActor3 extends Actor<Env> {
+    static nameFromRequest(request: Request): string {
         // Path should follow the pattern `/user/:id` and we should use the correct Actor instance
         const url = new URL(request.url);
         const pathParts = url.pathname.split('/');
@@ -62,7 +69,8 @@ export class MyActor2 extends Actor<Env> {
 export default handler(MyActor, { 
     studio: {
         enabled: true,
-        password: 'password'
+        password: 'password',
+        excludeActors: ["MyActor2"]
     },
     track: {
         enabled: true

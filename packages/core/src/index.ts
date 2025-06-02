@@ -46,7 +46,7 @@ export abstract class Actor<E> extends DurableObject<E> {
      * @param request - The incoming request
      * @returns The pathname from the request URL as the ID
      */
-    static idFromName = (request: Request): string => {
+    static nameFromRequest = (request: Request): string => {
         return new URL(request.url).pathname;
 
         // Or should instead the default implementation be
@@ -111,6 +111,8 @@ type HandlerOptions = {
         password?: string;
         // Enable or disable observability
         enabled: boolean;
+        // Exclude actors by their class name from Studio (e.g. "MyActor")
+        excludeActors?: Array<string>
     };
     track?: {
         // Table where actor metadata is stored. Defaults to `_cf_actors` and is an independent durable object.
@@ -190,7 +192,15 @@ export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
                 }));
             }
             
-            // Check if the class exists in the environment
+            // Exclude certain actors from Studio
+            if (opts?.studio?.excludeActors?.includes(payload.class)) {
+                return Promise.resolve(new Response(`Actor '${payload.class}' is excluded from Studio`, { 
+                    status: 403,
+                    headers: { 'Content-Type': 'application/json' }
+                }));
+            }
+            
+            // Check if the actor exists in the environment
             if (!(payload.class in (env as Record<string, unknown>))) {
                 return Promise.resolve(new Response(`Class '${payload.class}' not found in environment`, { 
                     status: 404,
@@ -279,7 +289,7 @@ export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
                     }
 
                     const namespace = envObj[bindingName];
-                    const idString = (ObjectClass as any).idFromName(request);
+                    const idString = (ObjectClass as any).nameFromRequest(request);
                     const id = namespace.idFromName(idString);
                     const stub = namespace.get(id) as unknown as Actor<E>;
                     stub.setIdentifier(idString);
@@ -287,7 +297,7 @@ export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
                     // // If tracking is enabled, track the current actor identifier in a separate durable object.
                     if (opts?.track?.enabled) {
                         const trackingNamespace = envObj[bindingName];
-                        const trackingIdString = (ObjectClass as any).idFromName(request);
+                        const trackingIdString = (ObjectClass as any).nameFromRequest(request);
                         const trackingId = trackingNamespace.idFromName('_cf_actors');
                         const trackingStub = trackingNamespace.get(trackingId) as unknown as Actor<E>;
                         trackingStub.setIdentifier(trackingIdString);
@@ -334,7 +344,7 @@ export async function fetchActor<T extends Actor<any>>(
 ): Promise<Response> {
     try {
         const className = ActorClass.name;
-        const idString = (ActorClass as any).idFromName?.(request) ?? Actor.idFromName(request);
+        const idString = (ActorClass as any).nameFromRequest?.(request) ?? Actor.nameFromRequest(request);
         const stub = getActor(ActorClass, idString);
 
         if (!stub) {
