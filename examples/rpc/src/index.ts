@@ -1,35 +1,31 @@
 import { Actor, handler, fetchActor, Worker } from '../../../packages/core/src'
 
+// TODO LIST:
+// [ ] Store self identifier in storage (if storage exists, or if alarm exists)
+// [ ] Right now identifiers are only stored if go through `handler` not if called from another
+
 // Example worker with RPC call into actor
-export default class MyWorker extends Worker<Env> {
+export class MyWorker extends Worker<Env> {
     async fetch(request: Request): Promise<Response> {
         return fetchActor(request, MyActor);
     }
 }
 
-// Example actor with RPC function
+// Example actor with RPC calling into another actor
 export class MyActor extends Actor<Env> {
-    static idFromRequest(request: Request): string {
-        // Path should follow the pattern `/user/:id` and we should use the correct Actor instance
-        const url = new URL(request.url);
-        const pathParts = url.pathname.split('/');
-        return pathParts.length === 3 ? pathParts[2] : "default";
-    }
-
     async fetch(request: Request): Promise<Response> {
-        const actor = MyActor2.get('default');
-        const total = await actor?.add(400, 200);
-        return new Response(`Actor Count: ${total} - ${MyActor.idFromRequest(request)}`)
+        const actor = MyActor2.get('default') as unknown as MyActor2;
+        const result = await actor.add(1, 2);
+        return new Response(`Result: ${result}`);
     }
 }
 
 // Example actor with database querying
 export class MyActor2 extends Actor<Env> {
     async fetch(request: Request): Promise<Response> {
-        const query = await this.database.query({
-            sql: `SELECT 1+1;`
-        });
-
+        // Example using the `Storage` class built into `Actor`
+        // Idea of how you get basic functionality "out of the box".
+        const query = await this.storage.query(`SELECT 1 + 2;`);
         return new Response(`Actor Query: ${JSON.stringify(query)}`)
     }
 
@@ -42,7 +38,16 @@ export class MyActor2 extends Actor<Env> {
 // export default handler(MyWorker); 
 
 // Try to skip the Worker and go direct to an Actor
-// export default handler(MyActor); 
+export default handler(MyActor, { 
+    studio: {
+        enabled: true,
+        password: 'password',
+        excludeActors: ["MyActor2"]
+    },
+    track: {
+        enabled: true
+    }
+}); 
 // export default handler(MyActor2); 
 
 // Also try returning a response without a Worker or an Actor

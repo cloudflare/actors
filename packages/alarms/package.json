@@ -1,16 +1,13 @@
 {
-    "name": "actor-core",
+    "name": "actor-alarms",
     "private": true,
     "version": "0.0.0",
-    "main": "../../dist/core/index.js",
-    "types": "../../dist/core/index.d.ts",
+    "main": "../../dist/alarms/src/index.js",
+    "types": "../../dist/alarms/src/index.d.ts",
     "scripts": {
       "build": "tsc -p ."
     },
-    "dependencies": {
-      "actor-storage": "0.0.0"
-  },
-  "devDependencies": {
+    "devDependencies": {
       "@cloudflare/vite-plugin": "1.2.2",
       "typescript": "^5.5.2",
       "vite": "^6.3.5",
