@@ -34,10 +34,10 @@ export abstract class Actor<E> extends DurableObject<E> {
     public setIdentifier(id: string) {
         this.identifier = id;
         
+        // TODO: Action
         // If storage is being used or an alarm exists, store this identifier into a metadata
         // SQLite table for referencing later. Currently being able to self refernece an instances
         // identifier from alarms for example is not possible.
-        
     }
 
     /**
@@ -49,6 +49,7 @@ export abstract class Actor<E> extends DurableObject<E> {
     static nameFromRequest = (request: Request): string => {
         return new URL(request.url).pathname;
 
+        // TODO: Discussion
         // Or should instead the default implementation be
         // return "default"
     };
@@ -68,7 +69,6 @@ export abstract class Actor<E> extends DurableObject<E> {
      * @param env - The environment object containing bindings and configuration
      */
     constructor(ctx?: ActorState, env?: E) {
-        console.log('Actor constructor called')
         if (ctx && env) {
             super(ctx, env);
             this.storage = new Storage(ctx.storage);
@@ -150,14 +150,14 @@ export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
             }
             
             // Check if the request is from dash.cloudflare.com
-            // Not sold on this approach yet, easy to spoof.
-            // const isFromCloudflare = 
-            //     (referer && new URL(referer).hostname === 'dash.cloudflare.com') || 
-            //     (origin && new URL(origin).hostname === 'dash.cloudflare.com');
+            // Not sold on this approach yet, easy to spoof, but serves as another layer of protection.
+            const isFromCloudflare = 
+                (referer && new URL(referer).hostname === 'dash.cloudflare.com') || 
+                (origin && new URL(origin).hostname === 'dash.cloudflare.com');
                 
-            // if (!isFromCloudflare) {
-            //     return Promise.resolve(new Response('Unauthorized', { status: 403 }));
-            // }
+            if (!isFromCloudflare) {
+                return Promise.resolve(new Response('Unauthorized', { status: 403 }));
+            }
 
             // Only accept POST requests
             if (request.method !== 'POST') {
@@ -294,7 +294,7 @@ export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
                     const stub = namespace.get(id) as unknown as Actor<E>;
                     stub.setIdentifier(idString);
 
-                    // // If tracking is enabled, track the current actor identifier in a separate durable object.
+                    // If tracking is enabled, track the current actor identifier in a separate durable object.
                     if (opts?.track?.enabled) {
                         const trackingNamespace = envObj[bindingName];
                         const trackingIdString = (ObjectClass as any).nameFromRequest(request);
@@ -369,7 +369,7 @@ export function getActor<T extends Actor<any>>(
     id: string
 ): DurableObjectStub<T> | undefined {
     const className = ActorClass.name;
-    const envObj = env as Record<string, DurableObjectNamespace>;
+    const envObj = env as unknown as Record<string, DurableObjectNamespace>;
     
     const bindingName = Object.keys(envObj).find(key => {
         const binding = (env as any).__DURABLE_OBJECT_BINDINGS?.[key];

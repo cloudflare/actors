@@ -5,14 +5,16 @@
     "type": "module",
     "main": "./dist/index.js",
     "exports": {
-        "./core": "./dist/core/index.js",
-        "./storage": "./dist/storage/index.js"
+        ".": "./dist/core/src/index.js",
+        "./storage": "./dist/storage/src/index.js",
+        "./alarms": "./dist/alarms/src/index.js"
     },
-    "types": "./dist/index.d.ts",
+    "types": "./dist/core/src/index.d.ts",
     "typesVersions": {
         "*": {
-            "core": ["./dist/core/index.d.ts"],
-            "storage": ["./dist/storage/index.d.ts"]
+            ".": ["./dist/core/src/index.d.ts"],
+            "storage": ["./dist/storage/src/index.d.ts"],
+            "alarms": ["./dist/alarms/src/index.d.ts"]
         }
     },
     "files": [
@@ -22,7 +24,7 @@
     "scripts": {
         "deploy": "wrangler deploy",
         "cf-typegen": "wrangler types",
-        "build": "vite build",
+        "build": "tsc -p ./packages",
         "dev": "vite",
         "clean": "rm -rf dist .wrangler worker-configuration.d.ts"
     },

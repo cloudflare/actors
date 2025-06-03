@@ -1,0 +1,16 @@
+{
+    "name": "actor-alarms",
+    "private": true,
+    "version": "0.0.0",
+    "main": "../../dist/alarms/index.js",
+    "types": "../../dist/alarms/index.d.ts",
+    "scripts": {
+      "build": "tsc -p ."
+    },
+    "devDependencies": {
+      "@cloudflare/vite-plugin": "1.2.2",
+      "typescript": "^5.5.2",
+      "vite": "^6.3.5",
+      "wrangler": "^4.16.0"
+	}
+  }
