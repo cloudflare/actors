@@ -1,6 +1,6 @@
-import { DurableObject, WorkerEntrypoint } from "cloudflare:workers";
+import { env, DurableObject, WorkerEntrypoint } from "cloudflare:workers";
 import { Storage } from "../../storage/src/index";
-import { env } from "cloudflare:workers";
+import { Alarms, Alarms2 } from "../../alarms/src/index";
 
 /**
  * Alias type for DurableObjectState to match the adopted Actor nomenclature.
@@ -25,7 +25,8 @@ export abstract class Worker<T> extends WorkerEntrypoint {
  */
 export abstract class Actor<E> extends DurableObject<E> {
     public identifier?: string;
-    public storage: Storage; // BrowsableHandler; // Storage instead of BrowsableHandler
+    public storage: Storage;
+    public alarms: Alarms<this>;
 
     public __studio(_: any) {
         return this.storage.__studio(_);
@@ -72,10 +73,12 @@ export abstract class Actor<E> extends DurableObject<E> {
         if (ctx && env) {
             super(ctx, env);
             this.storage = new Storage(ctx.storage);
+            this.alarms = new Alarms(ctx, this);
         } else {
             // @ts-ignore - This is handled internally by the framework
             super();
             this.storage = new Storage(undefined);
+            this.alarms = new Alarms(undefined, this);
         }
     }
 
@@ -86,6 +89,60 @@ export abstract class Actor<E> extends DurableObject<E> {
      */
     async fetch(request: Request): Promise<Response> {
         throw new Error('fetch() must be implemented in derived class');
+    }
+
+    /**
+     * Execute SQL queries against the Agent's database
+     * @template T Type of the returned rows
+     * @param strings SQL query template strings
+     * @param values Values to be inserted into the query
+     * @returns Array of query results
+     */
+    sql<T = Record<string, string | number | boolean | null>>(
+        strings: TemplateStringsArray,
+        ...values: (string | number | boolean | null)[]
+    ) {
+        let query = "";
+        try {
+          // Construct the SQL query with placeholders
+          query = strings.reduce(
+            (acc, str, i) => acc + str + (i < values.length ? "?" : ""),
+            ""
+          );
+    
+          // Execute the SQL query with the provided values
+          return [...this.ctx.storage.sql.exec(query, ...values)] as T[];
+        } catch (e) {
+          console.error(`failed to execute sql query: ${query}`, e);
+          throw e;
+        }
+    }
+
+    alarm(alarmInfo?: AlarmInvocationInfo): void | Promise<void> {
+        if (this.alarms) {
+            return this.alarms.alarm(alarmInfo);
+        }
+
+        return;
+    }
+
+    /**
+     * Destroy the Actor by removing all actor library specific tables and state
+     * that is associated with the actor. This operation may not succeed if you do
+     * not delete all of the user defined SQL tables first. This function will
+     * handle deleting tables specific to this library only.
+     */
+    async destroy() {
+        // Drop actor library specific tables, the user will be responsible to delete
+        // their own tables first otherwise this won't successfully destroy the actor.
+        await this.storage.query(`DROP TABLE IF EXISTS _actor_alarms`);
+    
+        // Delete all alarms
+        await this.ctx.storage.deleteAlarm();
+        await this.ctx.storage.deleteAll();
+
+        // Enforce eviction of the actor
+        this.ctx.abort("destroyed");
     }
 }
 
@@ -127,7 +184,7 @@ type HandlerOptions = {
  * This function can handle both class-based and function-based handlers.
  * @template E - The type of the environment object
  * @param input - The handler input (class or function)
- * @param opts - Optional options for Studio integration
+ * @param opts - Optional options for integration features
  * @returns An ExportedHandler that can be used as a Worker
  */
 export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
@@ -151,13 +208,13 @@ export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
             
             // Check if the request is from dash.cloudflare.com
             // Not sold on this approach yet, easy to spoof, but serves as another layer of protection.
-            const isFromCloudflare = 
-                (referer && new URL(referer).hostname === 'dash.cloudflare.com') || 
-                (origin && new URL(origin).hostname === 'dash.cloudflare.com');
+            // const isFromCloudflare = 
+            //     (referer && new URL(referer).hostname === 'dash.cloudflare.com') || 
+            //     (origin && new URL(origin).hostname === 'dash.cloudflare.com');
                 
-            if (!isFromCloudflare) {
-                return Promise.resolve(new Response('Unauthorized', { status: 403 }));
-            }
+            // if (!isFromCloudflare) {
+            //     return Promise.resolve(new Response('Unauthorized', { status: 403 }));
+            // }
 
             // Only accept POST requests
             if (request.method !== 'POST') {
