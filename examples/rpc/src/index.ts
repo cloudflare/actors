@@ -7,7 +7,7 @@ import { Actor, handler, fetchActor, Worker } from '../../../packages/core/src'
 // Example worker with RPC call into actor
 export class MyWorker extends Worker<Env> {
     async fetch(request: Request): Promise<Response> {
-        return fetchActor(request, MyActor);
+        return fetchActor(request, MyActor2);
     }
 }
 
@@ -26,10 +26,16 @@ export class MyActor2 extends Actor<Env> {
         // Example using the `Storage` class built into `Actor`
         // Idea of how you get basic functionality "out of the box".
         const query = await this.storage.query(`SELECT 1 + 2;`);
+
+        // Alarm
+        this.alarms.schedule(10, 'add', [1, 2]);
+        // await this.ctx.storage.setAlarm(10000);
+
         return new Response(`Actor Query: ${JSON.stringify(query)}`)
     }
 
     public async add(a: number, b: number): Promise<number> {
+        console.log('Alarm... Adding: ', a, b);
         return a + b;
     }
 }
@@ -41,13 +47,14 @@ export class MyActor2 extends Actor<Env> {
 export default handler(MyActor, { 
     studio: {
         enabled: true,
-        password: 'password',
+        secretStoreBinding: 'ActorStudioSecret',
         excludeActors: ["MyActor2"]
     },
     track: {
         enabled: true
     }
 }); 
+
 // export default handler(MyActor2); 
 
 // Also try returning a response without a Worker or an Actor

@@ -1,6 +1,6 @@
-import { DurableObject, WorkerEntrypoint } from "cloudflare:workers";
+import { env, DurableObject, WorkerEntrypoint } from "cloudflare:workers";
 import { Storage } from "../../storage/src/index";
-import { env } from "cloudflare:workers";
+import { Alarms } from "../../alarms/src/index";
 
 /**
  * Alias type for DurableObjectState to match the adopted Actor nomenclature.
@@ -25,7 +25,8 @@ export abstract class Worker<T> extends WorkerEntrypoint {
  */
 export abstract class Actor<E> extends DurableObject<E> {
     public identifier?: string;
-    public storage: Storage; // BrowsableHandler; // Storage instead of BrowsableHandler
+    public storage: Storage;
+    public alarms: Alarms<this>;
 
     public __studio(_: any) {
         return this.storage.__studio(_);
@@ -72,10 +73,12 @@ export abstract class Actor<E> extends DurableObject<E> {
         if (ctx && env) {
             super(ctx, env);
             this.storage = new Storage(ctx.storage);
+            this.alarms = new Alarms(ctx, this);
         } else {
             // @ts-ignore - This is handled internally by the framework
             super();
             this.storage = new Storage(undefined);
+            this.alarms = new Alarms(undefined, this);
         }
     }
 
@@ -86,6 +89,60 @@ export abstract class Actor<E> extends DurableObject<E> {
      */
     async fetch(request: Request): Promise<Response> {
         throw new Error('fetch() must be implemented in derived class');
+    }
+
+    /**
+     * Execute SQL queries against the Agent's database
+     * @template T Type of the returned rows
+     * @param strings SQL query template strings
+     * @param values Values to be inserted into the query
+     * @returns Array of query results
+     */
+    sql<T = Record<string, string | number | boolean | null>>(
+        strings: TemplateStringsArray,
+        ...values: (string | number | boolean | null)[]
+    ) {
+        let query = "";
+        try {
+          // Construct the SQL query with placeholders
+          query = strings.reduce(
+            (acc, str, i) => acc + str + (i < values.length ? "?" : ""),
+            ""
+          );
+    
+          // Execute the SQL query with the provided values
+          return [...this.ctx.storage.sql.exec(query, ...values)] as T[];
+        } catch (e) {
+          console.error(`failed to execute sql query: ${query}`, e);
+          throw e;
+        }
+    }
+
+    alarm(alarmInfo?: AlarmInvocationInfo): void | Promise<void> {
+        if (this.alarms) {
+            return this.alarms.alarm(alarmInfo);
+        }
+
+        return;
+    }
+
+    /**
+     * Destroy the Actor by removing all actor library specific tables and state
+     * that is associated with the actor. This operation may not succeed if you do
+     * not delete all of the user defined SQL tables first. This function will
+     * handle deleting tables specific to this library only.
+     */
+    async destroy() {
+        // Drop actor library specific tables, the user will be responsible to delete
+        // their own tables first otherwise this won't successfully destroy the actor.
+        await this.storage.query(`DROP TABLE IF EXISTS _actor_alarms`);
+    
+        // Delete all alarms
+        await this.ctx.storage.deleteAlarm();
+        await this.ctx.storage.deleteAll();
+
+        // Enforce eviction of the actor
+        this.ctx.abort("destroyed");
     }
 }
 
@@ -108,7 +165,7 @@ type HandlerInput<E> =
 type HandlerOptions = {
     studio?: {
         // Password for protection against unauthorized access
-        password?: string;
+        secretStoreBinding?: string;
         // Enable or disable observability
         enabled: boolean;
         // Exclude actors by their class name from Studio (e.g. "MyActor")
@@ -127,7 +184,7 @@ type HandlerOptions = {
  * This function can handle both class-based and function-based handlers.
  * @template E - The type of the environment object
  * @param input - The handler input (class or function)
- * @param opts - Optional options for Studio integration
+ * @param opts - Optional options for integration features
  * @returns An ExportedHandler that can be used as a Worker
  */
 export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
@@ -138,57 +195,106 @@ export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
 
         const url = new URL(request.url);
         if (url.pathname === '/__studio') {
+            // Handle OPTIONS requests for CORS preflight
+            if (request.method === 'OPTIONS') {
+                return Promise.resolve(new Response(null, {
+                    status: 204,
+                    headers: {
+                        'Access-Control-Allow-Origin': '*',
+                        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                        'Access-Control-Allow-Headers': 'Content-Type, X-Studio-Authentication, Origin, Referer',
+                        'Access-Control-Max-Age': '86400'
+                    }
+                }));
+            }
             // Verify that the request originates from dash.cloudflare.com
             const referer = request.headers.get('Referer');
             const origin = request.headers.get('Origin');
             const authentication = request.headers.get('X-Studio-Authentication');
 
+            const envObj = env as Record<string, SecretsStoreSecret>;
+                    
+            // Find the binding that matches this secret name
+            const bindingName = Object.keys(envObj).find(key => {
+                return key === opts.studio?.secretStoreBinding;
+            });
+
+            if (!bindingName) return null;
+
+            const namespace = envObj[bindingName];
+            const secret = await namespace.get();
+            
             // If a Studio password value exists, then the authentication value must match to be able to
             // access the functionality.
-            if (opts?.studio?.password && (!authentication || authentication !== opts.studio.password)) {
-                return Promise.resolve(new Response('Unauthorized', { status: 403 }));
+            // if (opts?.studio?.password && (!authentication || authentication !== opts.studio.password)) {
+            if (opts?.studio?.secretStoreBinding && (!authentication || authentication !== secret)) {
+                return Promise.resolve(new Response('Unauthorized', { 
+                status: 403,
+                headers: { 
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type, X-Studio-Authentication, Origin, Referer'
+                }
+            }));
             }
             
             // Check if the request is from dash.cloudflare.com
             // Not sold on this approach yet, easy to spoof, but serves as another layer of protection.
-            const isFromCloudflare = 
-                (referer && new URL(referer).hostname === 'dash.cloudflare.com') || 
-                (origin && new URL(origin).hostname === 'dash.cloudflare.com');
+            // const isFromCloudflare = 
+            //     (referer && new URL(referer).hostname === 'dash.cloudflare.com') || 
+            //     (origin && new URL(origin).hostname === 'dash.cloudflare.com');
                 
-            if (!isFromCloudflare) {
-                return Promise.resolve(new Response('Unauthorized', { status: 403 }));
-            }
+            // if (!isFromCloudflare) {
+            //     return Promise.resolve(new Response('Unauthorized', { status: 403 }));
+            // }
 
             // Only accept POST requests
             if (request.method !== 'POST') {
-                return Promise.resolve(new Response('Method not allowed', { status: 405 }));
+                return Promise.resolve(new Response('Method not allowed', { 
+                    status: 405,
+                    headers: { 
+                        'Access-Control-Allow-Origin': '*',
+                        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                        'Access-Control-Allow-Headers': 'Content-Type, X-Studio-Authentication, Origin, Referer'
+                    }
+                }));
             }
             
             // Extract payload from request body
-            let payload: { class: string; id: string; statement: string; };
+            let payload: { class: string; id: string; statements: string[]; };
             try {
                 const jsonData = await request.json() as Record<string, unknown>;
                 
                 // Validate required fields
-                if (!jsonData.class || !jsonData.id || !jsonData.statement || 
+                if (!jsonData.class || !jsonData.id || !jsonData.statements || 
                     typeof jsonData.class !== 'string' || 
                     typeof jsonData.id !== 'string' || 
-                    typeof jsonData.statement !== 'string') {
-                    return Promise.resolve(new Response('Missing required fields: class, id, or statement', { 
+                    !Array.isArray(jsonData.statements)) {
+                    return Promise.resolve(new Response('Missing required fields: class, id, or statements', { 
                         status: 400,
-                        headers: { 'Content-Type': 'application/json' }
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*',
+                            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                            'Access-Control-Allow-Headers': 'Content-Type, X-Studio-Authentication, Origin, Referer'
+                        }
                     }));
                 }
                 
                 payload = {
                     class: jsonData.class,
                     id: jsonData.id,
-                    statement: jsonData.statement
+                    statements: jsonData.statements
                 };
             } catch (error) {
                 return Promise.resolve(new Response('Invalid JSON payload', { 
                     status: 400,
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*',
+                        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                        'Access-Control-Allow-Headers': 'Content-Type, X-Studio-Authentication, Origin, Referer'
+                    }
                 }));
             }
             
@@ -196,7 +302,12 @@ export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
             if (opts?.studio?.excludeActors?.includes(payload.class)) {
                 return Promise.resolve(new Response(`Actor '${payload.class}' is excluded from Studio`, { 
                     status: 403,
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*',
+                        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                        'Access-Control-Allow-Headers': 'Content-Type, X-Studio-Authentication, Origin, Referer'
+                    }
                 }));
             }
             
@@ -204,7 +315,12 @@ export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
             if (!(payload.class in (env as Record<string, unknown>))) {
                 return Promise.resolve(new Response(`Class '${payload.class}' not found in environment`, { 
                     status: 404,
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*',
+                        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                        'Access-Control-Allow-Headers': 'Content-Type, X-Studio-Authentication, Origin, Referer'
+                    }
                 }));
             }
             
@@ -212,17 +328,27 @@ export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
             try {
                 const stubId = (env as Record<string, DurableObjectNamespace>)[payload.class].idFromName(payload.id);
                 const stub = (env as Record<string, DurableObjectNamespace>)[payload.class].get(stubId) as unknown as Actor<E>;
-                result = await stub.__studio({ type: 'query', statement: payload.statement });
+                result = await stub.__studio({ type: 'transaction', statements: payload.statements });
             } catch (error) {
                 return Promise.resolve(new Response(`Error executing studio command: ${error instanceof Error ? error.message : String(error)}`, {
                     status: 500,
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*',
+                        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                        'Access-Control-Allow-Headers': 'Content-Type, X-Studio-Authentication, Origin, Referer'
+                    }
                 }));
             }
             
             return Promise.resolve(new Response(JSON.stringify(result), {
                 status: 200,
-                headers: { 'Content-Type': 'application/json' }
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type, X-Studio-Authentication, Origin, Referer'
+                }
             }));
         }
         return null;

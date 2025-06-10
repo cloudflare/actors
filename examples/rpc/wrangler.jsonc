@@ -25,6 +25,13 @@
 			}
 		]
 	},
+	"secrets_store_secrets": [
+		{
+			"binding": "ActorStudioSecret",
+			"store_id": "",
+			"secret_name": "ActorStudioSecret"
+		}
+	],
 	"observability": {
 		"enabled": true
 	}

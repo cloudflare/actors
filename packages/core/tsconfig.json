@@ -6,5 +6,5 @@
     "composite": true
   },
   "include": ["**/*.ts"],
-  "references": [{ "path": "../storage" }]
+  "references": [{ "path": "../storage" }, { "path": "../alarms" }]
 }
