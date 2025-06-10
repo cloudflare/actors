@@ -44,16 +44,17 @@ export class MyActor2 extends Actor<Env> {
 // export default handler(MyWorker); 
 
 // Try to skip the Worker and go direct to an Actor
-export default handler(MyActor2, { 
+export default handler(MyActor, { 
     studio: {
         enabled: true,
-        password: 'password',
-        // excludeActors: ["MyActor2"]
+        secretStoreBinding: 'ActorStudioSecret',
+        excludeActors: ["MyActor2"]
     },
     track: {
         enabled: true
     }
 }); 
+
 // export default handler(MyActor2); 
 
 // Also try returning a response without a Worker or an Actor

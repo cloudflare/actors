@@ -1,6 +1,6 @@
 import { env, DurableObject, WorkerEntrypoint } from "cloudflare:workers";
 import { Storage } from "../../storage/src/index";
-import { Alarms, Alarms2 } from "../../alarms/src/index";
+import { Alarms } from "../../alarms/src/index";
 
 /**
  * Alias type for DurableObjectState to match the adopted Actor nomenclature.
@@ -165,7 +165,7 @@ type HandlerInput<E> =
 type HandlerOptions = {
     studio?: {
         // Password for protection against unauthorized access
-        password?: string;
+        secretStoreBinding?: string;
         // Enable or disable observability
         enabled: boolean;
         // Exclude actors by their class name from Studio (e.g. "MyActor")
@@ -195,15 +195,47 @@ export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
 
         const url = new URL(request.url);
         if (url.pathname === '/__studio') {
+            // Handle OPTIONS requests for CORS preflight
+            if (request.method === 'OPTIONS') {
+                return Promise.resolve(new Response(null, {
+                    status: 204,
+                    headers: {
+                        'Access-Control-Allow-Origin': '*',
+                        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                        'Access-Control-Allow-Headers': 'Content-Type, X-Studio-Authentication, Origin, Referer',
+                        'Access-Control-Max-Age': '86400'
+                    }
+                }));
+            }
             // Verify that the request originates from dash.cloudflare.com
             const referer = request.headers.get('Referer');
             const origin = request.headers.get('Origin');
             const authentication = request.headers.get('X-Studio-Authentication');
 
+            const envObj = env as Record<string, SecretsStoreSecret>;
+                    
+            // Find the binding that matches this secret name
+            const bindingName = Object.keys(envObj).find(key => {
+                return key === opts.studio?.secretStoreBinding;
+            });
+
+            if (!bindingName) return null;
+
+            const namespace = envObj[bindingName];
+            const secret = await namespace.get();
+            
             // If a Studio password value exists, then the authentication value must match to be able to
             // access the functionality.
-            if (opts?.studio?.password && (!authentication || authentication !== opts.studio.password)) {
-                return Promise.resolve(new Response('Unauthorized', { status: 403 }));
+            // if (opts?.studio?.password && (!authentication || authentication !== opts.studio.password)) {
+            if (opts?.studio?.secretStoreBinding && (!authentication || authentication !== secret)) {
+                return Promise.resolve(new Response('Unauthorized', { 
+                status: 403,
+                headers: { 
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type, X-Studio-Authentication, Origin, Referer'
+                }
+            }));
             }
             
             // Check if the request is from dash.cloudflare.com
@@ -218,34 +250,51 @@ export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
 
             // Only accept POST requests
             if (request.method !== 'POST') {
-                return Promise.resolve(new Response('Method not allowed', { status: 405 }));
+                return Promise.resolve(new Response('Method not allowed', { 
+                    status: 405,
+                    headers: { 
+                        'Access-Control-Allow-Origin': '*',
+                        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                        'Access-Control-Allow-Headers': 'Content-Type, X-Studio-Authentication, Origin, Referer'
+                    }
+                }));
             }
             
             // Extract payload from request body
-            let payload: { class: string; id: string; statement: string; };
+            let payload: { class: string; id: string; statements: string[]; };
             try {
                 const jsonData = await request.json() as Record<string, unknown>;
                 
                 // Validate required fields
-                if (!jsonData.class || !jsonData.id || !jsonData.statement || 
+                if (!jsonData.class || !jsonData.id || !jsonData.statements || 
                     typeof jsonData.class !== 'string' || 
                     typeof jsonData.id !== 'string' || 
-                    typeof jsonData.statement !== 'string') {
-                    return Promise.resolve(new Response('Missing required fields: class, id, or statement', { 
+                    !Array.isArray(jsonData.statements)) {
+                    return Promise.resolve(new Response('Missing required fields: class, id, or statements', { 
                         status: 400,
-                        headers: { 'Content-Type': 'application/json' }
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*',
+                            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                            'Access-Control-Allow-Headers': 'Content-Type, X-Studio-Authentication, Origin, Referer'
+                        }
                     }));
                 }
                 
                 payload = {
                     class: jsonData.class,
                     id: jsonData.id,
-                    statement: jsonData.statement
+                    statements: jsonData.statements
                 };
             } catch (error) {
                 return Promise.resolve(new Response('Invalid JSON payload', { 
                     status: 400,
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*',
+                        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                        'Access-Control-Allow-Headers': 'Content-Type, X-Studio-Authentication, Origin, Referer'
+                    }
                 }));
             }
             
@@ -253,7 +302,12 @@ export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
             if (opts?.studio?.excludeActors?.includes(payload.class)) {
                 return Promise.resolve(new Response(`Actor '${payload.class}' is excluded from Studio`, { 
                     status: 403,
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*',
+                        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                        'Access-Control-Allow-Headers': 'Content-Type, X-Studio-Authentication, Origin, Referer'
+                    }
                 }));
             }
             
@@ -261,7 +315,12 @@ export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
             if (!(payload.class in (env as Record<string, unknown>))) {
                 return Promise.resolve(new Response(`Class '${payload.class}' not found in environment`, { 
                     status: 404,
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*',
+                        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                        'Access-Control-Allow-Headers': 'Content-Type, X-Studio-Authentication, Origin, Referer'
+                    }
                 }));
             }
             
@@ -269,17 +328,27 @@ export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
             try {
                 const stubId = (env as Record<string, DurableObjectNamespace>)[payload.class].idFromName(payload.id);
                 const stub = (env as Record<string, DurableObjectNamespace>)[payload.class].get(stubId) as unknown as Actor<E>;
-                result = await stub.__studio({ type: 'query', statement: payload.statement });
+                result = await stub.__studio({ type: 'transaction', statements: payload.statements });
             } catch (error) {
                 return Promise.resolve(new Response(`Error executing studio command: ${error instanceof Error ? error.message : String(error)}`, {
                     status: 500,
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*',
+                        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                        'Access-Control-Allow-Headers': 'Content-Type, X-Studio-Authentication, Origin, Referer'
+                    }
                 }));
             }
             
             return Promise.resolve(new Response(JSON.stringify(result), {
                 status: 200,
-                headers: { 'Content-Type': 'application/json' }
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type, X-Studio-Authentication, Origin, Referer'
+                }
             }));
         }
         return null;

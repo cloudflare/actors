@@ -103,10 +103,10 @@ export class Storage {
         if (cmd.type === 'query') {
             return this.query(cmd.statement);
         } else if (cmd.type === 'transaction') {
-            return storage.transactionSync(() => {
+            return storage.transaction(async () => {
                 const results = [];
                 for (const statement of cmd.statements) {
-                    results.push(this.query(statement));
+                    results.push(await this.query(statement, undefined, true));
                 }
 
                 return results;
