@@ -55,17 +55,6 @@ export interface SQLSchemaMigrationsConfig {
    * otherwise you risk corrupting your database, since already ran migrations, will NOT run again.
    */
   migrations: SQLSchemaMigration[];
-
-  /**
-   * This is the key that will be used to track the last successful migration ID in the KV storage.
-   * You should never have to use this, unless you were using an older version of `SQLSchemaMigrations`
-   * that was using a different key by default, and therefore you would like your migrations to
-   * continue using that, otherwise your migrations would run again being tracked with the new key.
-   *
-   * If your SQL migrations are safe to be ran multiple times, then just don't provide this.
-   * For example, using `CREATE TABLE IF NOT EXISTS` is safe, whereas `CREATE TABLE` along is not.
-   */
-  keyNameTrackingLastMigrationID?: string;
 }
 
 /**
@@ -208,8 +197,6 @@ export class SQLSchemaMigrations {
   }
 
   #_lastMigrationIDKeyName() {
-    return (
-      this.#_config.keyNameTrackingLastMigrationID ?? "__sql_migrations_lastID"
-    );
+    return "__sql_migrations_lastID";
   }
 }
