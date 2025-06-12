@@ -1,3 +1,5 @@
+import { SQLSchemaMigration, SQLSchemaMigrations } from "./sql-schema-migrations";
+
 /**
  * Represents a single SQL query request with optional parameters.
  */
@@ -26,13 +28,96 @@ interface StudioTransactionRequest {
 type StudioRequest = StudioQueryRequest | StudioTransactionRequest;
 
 /**
+ * Creates a proxied Storage instance that forwards property access to raw storage when not found on the Storage instance.
+ * @param storage - The Durable Object storage instance
+ * @returns A proxied Storage instance with access to DurableObjectStorage methods
+ */
+// export function createStorage(storage?: DurableObjectStorage): Storage {
+//     const instance = new Storage(storage);
+    
+//     // Return a proxy that will intercept property access
+//     return new Proxy(instance, {
+//         get: (target, prop, receiver) => {
+//             // First check if the property exists on the Storage instance
+//             if (prop in target) {
+//                 const value = Reflect.get(target, prop, receiver);
+//                 return value;
+//             }
+            
+//             // If not found, try to access it from target.raw
+//             if (target.raw) {
+//                 // Check if the property exists on raw or its prototype chain
+//                 const rawValue = Reflect.get(target.raw, prop, receiver);
+//                 if (rawValue !== undefined) {
+//                     // If it's a method, bind it to target.raw to preserve 'this' context
+//                     if (typeof rawValue === 'function') {
+//                         return function(...args: any[]) {
+//                             return rawValue.apply(target.raw, args);
+//                         };
+//                     }
+//                     return rawValue;
+//                 }
+//             }
+            
+//             // Property doesn't exist anywhere
+//             return undefined;
+//         }
+//     });
+// }
+
+/**
  * Handler class for executing SQL queries and transactions against a SQL storage backend.
  * Provides methods for executing single queries and transactions with proper error handling
  * and result formatting.
+ * 
+ * This class also provides access to methods from the underlying DurableObjectStorage
+ * through the proxy pattern.
+ */
+/**
+ * Storage class with methods from DurableObjectStorage
+ * The actual implementation of these methods is handled by the proxy in createStorage
  */
 export class Storage {
-    public storage: DurableObjectStorage | undefined;
+    // // Define methods from DurableObjectStorage for TypeScript autocomplete
+    // // These are not actually implemented here, but provided by the proxy
+    // deleteAlarm!: () => Promise<void>;
+    // getAlarm!: () => Promise<number | null>;
+    // setAlarm!: (scheduledTime: number | Date) => Promise<void>;
+    // get!: (key: string) => Promise<any>;
+    // put!: (key: string, value: any) => Promise<void>;
+    // delete!: (key: string) => Promise<boolean>;
+    // list!: () => Promise<Map<string, any>>;
+    // transaction!: <T>(closure: () => Promise<T>) => Promise<T>;
+    // // Index signature to allow dynamic property access
+    // [key: string]: any;
+
+    public raw: DurableObjectStorage | undefined;
     public sql: SqlStorage | undefined;
+    private _migrationsArray: SQLSchemaMigration[] = [];
+    public hasRanMigrations: boolean = false;
+    
+    /**
+     * Gets the current migrations array
+     */
+    public get migrations(): SQLSchemaMigration[] {
+        return this._migrationsArray;
+    }
+    
+    /**
+     * Sets the migrations array and updates the SQLSchemaMigrations instance if available
+     */
+    public set migrations(value: SQLSchemaMigration[]) {
+        this._migrationsArray = value;
+        
+        // Update the SQLSchemaMigrations instance if it exists
+        if (this.raw && this._migrations) {
+            this._migrations = new SQLSchemaMigrations({
+                doStorage: this.raw,
+                migrations: value
+            });
+        }
+    }
+    public _migrations: SQLSchemaMigrations | undefined;
 
     /**
      * Creates a new instance of Storage.
@@ -40,8 +125,15 @@ export class Storage {
      * @param storage - The Durable Object storage instance
      */
     constructor(storage?: DurableObjectStorage) {
-        this.storage = storage;
+        this.raw = storage;
         this.sql = storage?.sql;
+
+        if (storage) {
+            this._migrations = new SQLSchemaMigrations({
+                doStorage: storage,
+                migrations: this._migrationsArray
+            });
+        }
     }
 
     /**
@@ -79,7 +171,11 @@ export class Storage {
      * @param opts - Options containing the SQL query, parameters, and result format preference
      * @returns Promise resolving to either raw query results or formatted array
      */
-    public async query(sql: string, params?: unknown[], isRaw?: boolean) {
+    private async query(sql: string, params?: unknown[], isRaw?: boolean) {
+        // Attempt to run migrations if they have not been ran already
+        this.runMigrations();
+
+        // Now proceed with executing the query
         const cursor = await this.executeRawQuery({ sql, params })
         if (!cursor) return []
 
@@ -97,8 +193,19 @@ export class Storage {
         return cursor.toArray()
     }
 
+    async runMigrations() {
+        if (this.hasRanMigrations) return
+        if (!this._migrations) {
+            throw new Error('No migrations provided');
+        }
+
+        const response = await this._migrations.runAll();
+        this.hasRanMigrations = true;
+        return response
+    }
+
     async __studio(cmd: StudioRequest) {
-        const storage = this.storage as DurableObjectStorage;
+        const storage = this.raw as DurableObjectStorage;
 
         if (cmd.type === 'query') {
             return this.query(cmd.statement);

@@ -7,8 +7,9 @@
 	"migrations": [
 		{
 			"new_sqlite_classes": [
-				"MyActor",
-                "MyActor2"
+				"MyRPCActor",
+				"MyStorageActor",
+                "MyAlarmActor"
 			],
 			"tag": "v1"
 		}
@@ -16,22 +17,19 @@
 	"durable_objects": {
 		"bindings": [
 			{
-				"class_name": "MyActor",
-				"name": "MyActor"
+				"class_name": "MyRPCActor",
+				"name": "MyRPCActor"
 			},
             {
-				"class_name": "MyActor2",
-				"name": "MyActor2"
+				"class_name": "MyStorageActor",
+				"name": "MyStorageActor"
+			},
+			{
+				"class_name": "MyAlarmActor",
+				"name": "MyAlarmActor"
 			}
 		]
 	},
-	"secrets_store_secrets": [
-		{
-			"binding": "ActorStudioSecret",
-			"store_id": "",
-			"secret_name": "ActorStudioSecret"
-		}
-	],
 	"observability": {
 		"enabled": true
 	}
