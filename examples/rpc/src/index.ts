@@ -1,63 +1,123 @@
-import { Actor, handler, fetchActor, Worker } from '../../../packages/core/src'
+import { Actor, handler, fetchActor, Worker, ActorState } from '../../../packages/core/src'
 
-// TODO LIST:
-// [ ] Store self identifier in storage (if storage exists, or if alarm exists)
-// [ ] Right now identifiers are only stored if go through `handler` not if called from another
+/**
+ * How to test:
+ * ------------
+ * - Uncomment any of the examples below and run `npm run dev`
+ * - Visit https://localhost:5173 to trigger this file
+ * 
+ * How it works:
+ * -------------
+ * - Uncomment only ONE `export default handler(...)` at a time to test the various examples out
+ * - `handler` acts to define which primitive should be the entrypoint (Worker, Actor, or Request)
+ * - When using `handler` everything that isn't a Worker gets invisibly wrapped in a Worker for you
+ * - You can extend either `Worker` or `Actor` and your code becomes stateless or stateful
+ * - Actor comes with helper property classes such as `.storage` and `.alarms` to trigger helpful functions
+ * - In an Actor class you can execute SQL simply by using backticks – "this.sql`SELECT 1;`;"
+ * - You can manually apply migrations by running `this.storage.runMigrations()`
+ * - `nameFromRequest` lets you define the Actor identifier within the class definition rather than outside
+ */
 
-// Example worker with RPC call into actor
+
+// -----------------------------------------------------
+// Example response without explicitly defining a Worker
+// -----------------------------------------------------
+export default handler((request: Request) => {
+    return new Response('Hello, World!')
+})
+
+
+// -------------------------------------------------
+// Example Worker that forwards requests to an Actor
+// -------------------------------------------------
 export class MyWorker extends Worker<Env> {
     async fetch(request: Request): Promise<Response> {
-        return fetchActor(request, MyActor2);
+        return fetchActor(request, MyRPCActor);
     }
 }
+// export default handler(MyWorker);
 
-// Example actor with RPC calling into another actor
-export class MyActor extends Actor<Env> {
+
+// ---------------------------------------------
+// Example Worker with RPC calling into an Actor
+// ---------------------------------------------
+export class MyRPCWorker extends Worker<Env> {
     async fetch(request: Request): Promise<Response> {
-        const actor = MyActor2.get('default') as unknown as MyActor2;
-        const result = await actor.add(1, 2);
-        return new Response(`Result: ${result}`);
+        const actor = MyAlarmActor.get('default');
+        const result = await actor?.add(2, 3);
+        return new Response(`Answer = ${result}`);
     }
 }
+// export default handler(MyRPCWorker);
 
-// Example actor with database querying
-export class MyActor2 extends Actor<Env> {
+
+// -------------------------------------------------
+// Example Actor with RPC calling into another Actor
+// -------------------------------------------------
+export class MyRPCActor extends Actor<Env> {
     async fetch(request: Request): Promise<Response> {
-        // Example using the `Storage` class built into `Actor`
-        // Idea of how you get basic functionality "out of the box".
-        const query = await this.storage.query(`SELECT 1 + 2;`);
+        const actor = MyAlarmActor.get('default');
+        const result = await actor?.add(3, 4);
+        return new Response(`Answer = ${result}`);
+    }
+}
+// export default handler(MyRPCActor);
 
-        // Alarm
-        this.alarms.schedule(10, 'add', [1, 2]);
-        // await this.ctx.storage.setAlarm(10000);
 
-        return new Response(`Actor Query: ${JSON.stringify(query)}`)
+// -----------------------------------------------
+// Example Actor with storage package interactions
+// -----------------------------------------------
+export class MyStorageActor extends Actor<Env> {
+    // Defined a custom name within the Actor to reference the Actor instance
+    nameFromRequest(request: Request) {
+        return "foobar"
     }
 
+    constructor(ctx?: ActorState, env?: Env) {
+        super(ctx, env);
+
+        // Set migrations for the SQLite database
+        this.storage.migrations = [{
+            idMonotonicInc: 1,
+            description: "First migration",
+            sql: "CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY)"
+        }, {
+            idMonotonicInc: 2,
+            description: "Second migration",
+            sql: "CREATE TABLE IF NOT EXISTS test2 (id INTEGER PRIMARY KEY)"
+        }];
+    }
+
+    async fetch(request: Request): Promise<Response> {
+        // Run migrations before executing our query
+        await this.storage.runMigrations();
+
+        // Now we can proceed with querying
+        const query = this.sql`SELECT * FROM sqlite_master LIMIT ${10};`
+        return new Response(`${JSON.stringify(query)}`)
+    }
+}
+// export default handler(MyStorageActor)
+
+
+// ----------------------------------------------
+// Example Actor with alarm package interactions
+// ----------------------------------------------
+export class MyAlarmActor extends Actor<Env> {
+    async fetch(request: Request): Promise<Response> {
+        // Schedule an alarm to trigger in 10 seconds adding two values
+        this.alarms.schedule(10, 'addFromAlarm', [1, 2, 'test']);
+        return new Response('Alarm set')
+    }
+
+    // Called from RPC in another Worker or Actor
     public async add(a: number, b: number): Promise<number> {
-        console.log('Alarm... Adding: ', a, b);
+        return a + b;
+    }
+
+    public async addFromAlarm(a: number, b: number, desc: string): Promise<number> {
+        console.log('Alarm triggered, you can view this alarm in your Worker logs', desc)
         return a + b;
     }
 }
-
-// You can tell your incoming request to route to your Worker
-// export default handler(MyWorker); 
-
-// Try to skip the Worker and go direct to an Actor
-export default handler(MyActor, { 
-    studio: {
-        enabled: true,
-        secretStoreBinding: 'ActorStudioSecret',
-        excludeActors: ["MyActor2"]
-    },
-    track: {
-        enabled: true
-    }
-}); 
-
-// export default handler(MyActor2); 
-
-// Also try returning a response without a Worker or an Actor
-// export default handler((request: Request) => {
-//     return new Response('Lone Wolf')
-// })
+// export default handler(MyAlarmActor);
