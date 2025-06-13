@@ -1,11 +1,13 @@
 import { Actor, handler, fetchActor, Worker, ActorState } from '../../../packages/core/src'
 
 /**
+ * ------------
  * How to test:
  * ------------
  * - Uncomment any of the examples below and run `npm run dev`
  * - Visit https://localhost:5173 to trigger this file
  * 
+ * -------------
  * How it works:
  * -------------
  * - Uncomment only ONE `export default handler(...)` at a time to test the various examples out
@@ -105,8 +107,8 @@ export class MyStorageActor extends Actor<Env> {
 // ----------------------------------------------
 export class MyAlarmActor extends Actor<Env> {
     async fetch(request: Request): Promise<Response> {
-        // Schedule an alarm to trigger in 10 seconds adding two values
-        this.alarms.schedule(10, 'addFromAlarm', [1, 2, 'test']);
+        // Schedule an alarm to trigger in 10 seconds adding two values and a description
+        this.alarms.schedule(10, 'addFromAlarm', [1, 2, 'Adding 1 + 2']);
         return new Response('Alarm set')
     }
 
@@ -115,8 +117,9 @@ export class MyAlarmActor extends Actor<Env> {
         return a + b;
     }
 
+    // Called from our alarm defined above
     public async addFromAlarm(a: number, b: number, desc: string): Promise<number> {
-        console.log('Alarm triggered, you can view this alarm in your Worker logs', desc)
+        console.log(`Alarm triggered, you can view this alarm in your Worker logs: ${a} + ${b} (desc: ${desc})`);
         return a + b;
     }
 }

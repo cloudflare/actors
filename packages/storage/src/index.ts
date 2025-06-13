@@ -28,44 +28,6 @@ interface StudioTransactionRequest {
 type StudioRequest = StudioQueryRequest | StudioTransactionRequest;
 
 /**
- * Creates a proxied Storage instance that forwards property access to raw storage when not found on the Storage instance.
- * @param storage - The Durable Object storage instance
- * @returns A proxied Storage instance with access to DurableObjectStorage methods
- */
-// export function createStorage(storage?: DurableObjectStorage): Storage {
-//     const instance = new Storage(storage);
-    
-//     // Return a proxy that will intercept property access
-//     return new Proxy(instance, {
-//         get: (target, prop, receiver) => {
-//             // First check if the property exists on the Storage instance
-//             if (prop in target) {
-//                 const value = Reflect.get(target, prop, receiver);
-//                 return value;
-//             }
-            
-//             // If not found, try to access it from target.raw
-//             if (target.raw) {
-//                 // Check if the property exists on raw or its prototype chain
-//                 const rawValue = Reflect.get(target.raw, prop, receiver);
-//                 if (rawValue !== undefined) {
-//                     // If it's a method, bind it to target.raw to preserve 'this' context
-//                     if (typeof rawValue === 'function') {
-//                         return function(...args: any[]) {
-//                             return rawValue.apply(target.raw, args);
-//                         };
-//                     }
-//                     return rawValue;
-//                 }
-//             }
-            
-//             // Property doesn't exist anywhere
-//             return undefined;
-//         }
-//     });
-// }
-
-/**
  * Handler class for executing SQL queries and transactions against a SQL storage backend.
  * Provides methods for executing single queries and transactions with proper error handling
  * and result formatting.
@@ -73,24 +35,7 @@ type StudioRequest = StudioQueryRequest | StudioTransactionRequest;
  * This class also provides access to methods from the underlying DurableObjectStorage
  * through the proxy pattern.
  */
-/**
- * Storage class with methods from DurableObjectStorage
- * The actual implementation of these methods is handled by the proxy in createStorage
- */
 export class Storage {
-    // // Define methods from DurableObjectStorage for TypeScript autocomplete
-    // // These are not actually implemented here, but provided by the proxy
-    // deleteAlarm!: () => Promise<void>;
-    // getAlarm!: () => Promise<number | null>;
-    // setAlarm!: (scheduledTime: number | Date) => Promise<void>;
-    // get!: (key: string) => Promise<any>;
-    // put!: (key: string, value: any) => Promise<void>;
-    // delete!: (key: string) => Promise<boolean>;
-    // list!: () => Promise<Map<string, any>>;
-    // transaction!: <T>(closure: () => Promise<T>) => Promise<T>;
-    // // Index signature to allow dynamic property access
-    // [key: string]: any;
-
     public raw: DurableObjectStorage | undefined;
     public sql: SqlStorage | undefined;
     private _migrationsArray: SQLSchemaMigration[] = [];
