@@ -9,6 +9,11 @@ import { Alarms } from "../../alarms/src/index";
 export type ActorState = DurableObjectState;
 
 /**
+ * Provide a default name value for an actor.
+ */
+const DEFAULT_ACTOR_NAME = "default";
+
+/**
  * Base abstract class for Workers that provides common functionality and structure.
  * @template T - The type of the environment object that will be available to the worker
  */
@@ -32,29 +37,12 @@ export abstract class Actor<E> extends DurableObject<E> {
         return this.storage.__studio(_);
     }
 
+    /**
+     * Set the identifier for the actor as named by the client
+     * @param id The identifier to set
+     */
     public async setIdentifier(id: string) {
         this.identifier = id;
-        const ctxId = this.ctx.id;
-
-        const databaseSize = this.ctx.storage.sql.databaseSize;
-        const alarmExists = await this.ctx.storage.getAlarm();
-
-        // If we can detect that storage is already being used for this instance
-        // then we can safely store additional metadata about this identifier without
-        // pinning storage unnecessarily.
-        if (alarmExists || databaseSize > 4096) {
-            this.ctx.waitUntil(this.saveIdentifier(id, ctxId));
-        }
-    }
-
-    private async saveIdentifier(id: string, ctxId: DurableObjectId) {
-        this.sql`CREATE TABLE IF NOT EXISTS _actor_metadata`;
-        this.sql`INSERT INTO _actor_metadata (identifier, ctxId) VALUES (${id}, ${ctxId.toString()}) ON CONFLICT DO NOTHING`;
-    }
-
-    private getIdentifier(ctxId: DurableObjectId): { identifier: string, ctxId: string } | undefined {
-        const result = this.sql`SELECT identifier, ctxId FROM _actor_metadata LIMIT 1`;
-        return result[0] as { identifier: string, ctxId: string } | undefined;
     }
 
     /**
@@ -63,7 +51,7 @@ export abstract class Actor<E> extends DurableObject<E> {
      * @returns The name string value defined by the client application to reference an instance
      */
     static nameFromRequest = (request: Request): string => {
-        return "default";
+        return DEFAULT_ACTOR_NAME;
     };
 
     /**
@@ -90,6 +78,11 @@ export abstract class Actor<E> extends DurableObject<E> {
             super();
             this.storage = new Storage(undefined);
             this.alarms = new Alarms(undefined, this);
+        }
+
+        // Set a default identifier if none exists
+        if (!this.identifier) {
+            this.identifier = DEFAULT_ACTOR_NAME;
         }
     }
 
