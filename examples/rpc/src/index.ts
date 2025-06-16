@@ -1,4 +1,4 @@
-import { Actor, handler, fetchActor, Worker, ActorState } from '../../../packages/core/src'
+import { Actor, handler, Worker, ActorState } from '../../../packages/core/src'
 
 /**
  * ------------
@@ -35,7 +35,8 @@ export default handler((request: Request) => {
 // -------------------------------------------------
 export class MyWorker extends Worker<Env> {
     async fetch(request: Request): Promise<Response> {
-        return fetchActor(request, MyRPCActor);
+        const actor = MyRPCActor.get('default');
+        return (await actor?.fetch(request)) ?? new Response('Not found', { status: 404 });
     }
 }
 // export default handler(MyWorker);

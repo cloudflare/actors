@@ -266,40 +266,6 @@ export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
     };
 }
 
-/**
- * Utility function to fetch an Actor instance and handle a request.
- * This is a convenience method for making requests to Durable Objects.
- * @template T - The type of the Actor class
- * @param request - The request to handle
- * @param ActorClass - The class constructor for the Actor
- * @returns A Promise that resolves to a Response
- */
-export async function fetchActor<T extends Actor<any>>(
-    request: Request,
-    ActorClass: new (state: ActorState, env: any) => T
-): Promise<Response> {
-    try {
-        const className = ActorClass.name;
-        const idString = (ActorClass as any).nameFromRequest?.(request) ?? Actor.nameFromRequest(request);
-        const stub = getActor(ActorClass, idString);
-
-        if (!stub) {
-            return new Response(
-                `No DurableObject binding found for class ${className}. Make sure it's defined in wrangler.jsonc`,
-                { status: 404 }
-            );
-        }
-
-        stub.setIdentifier(idString);
-        return stub.fetch(request);
-    } catch (error) {
-        return new Response(
-            `Error fetching actor: ${error instanceof Error ? error.message : 'Unknown error'}`,
-            { status: 500 }
-        );
-    }
-}
-
 export function getActor<T extends Actor<any>>(
     ActorClass: new (state: ActorState, env: any) => T,
     id: string
