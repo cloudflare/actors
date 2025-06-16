@@ -9,6 +9,11 @@ import { Alarms } from "../../alarms/src/index";
 export type ActorState = DurableObjectState;
 
 /**
+ * Provide a default name value for an actor.
+ */
+const DEFAULT_ACTOR_NAME = "default";
+
+/**
  * Base abstract class for Workers that provides common functionality and structure.
  * @template T - The type of the environment object that will be available to the worker
  */
@@ -32,29 +37,12 @@ export abstract class Actor<E> extends DurableObject<E> {
         return this.storage.__studio(_);
     }
 
+    /**
+     * Set the identifier for the actor as named by the client
+     * @param id The identifier to set
+     */
     public async setIdentifier(id: string) {
         this.identifier = id;
-        const ctxId = this.ctx.id;
-
-        const databaseSize = this.ctx.storage.sql.databaseSize;
-        const alarmExists = await this.ctx.storage.getAlarm();
-
-        // If we can detect that storage is already being used for this instance
-        // then we can safely store additional metadata about this identifier without
-        // pinning storage unnecessarily.
-        if (alarmExists || databaseSize > 4096) {
-            this.ctx.waitUntil(this.saveIdentifier(id, ctxId));
-        }
-    }
-
-    private async saveIdentifier(id: string, ctxId: DurableObjectId) {
-        this.sql`CREATE TABLE IF NOT EXISTS _actor_metadata`;
-        this.sql`INSERT INTO _actor_metadata (identifier, ctxId) VALUES (${id}, ${ctxId.toString()}) ON CONFLICT DO NOTHING`;
-    }
-
-    private getIdentifier(ctxId: DurableObjectId): { identifier: string, ctxId: string } | undefined {
-        const result = this.sql`SELECT identifier, ctxId FROM _actor_metadata LIMIT 1`;
-        return result[0] as { identifier: string, ctxId: string } | undefined;
     }
 
     /**
@@ -63,7 +51,7 @@ export abstract class Actor<E> extends DurableObject<E> {
      * @returns The name string value defined by the client application to reference an instance
      */
     static nameFromRequest = (request: Request): string => {
-        return "default";
+        return DEFAULT_ACTOR_NAME;
     };
 
     /**
@@ -91,6 +79,11 @@ export abstract class Actor<E> extends DurableObject<E> {
             this.storage = new Storage(undefined);
             this.alarms = new Alarms(undefined, this);
         }
+
+        // Set a default identifier if none exists
+        if (!this.identifier) {
+            this.identifier = DEFAULT_ACTOR_NAME;
+        }
     }
 
     /**
@@ -115,17 +108,17 @@ export abstract class Actor<E> extends DurableObject<E> {
     ) {
         let query = "";
         try {
-          // Construct the SQL query with placeholders
-          query = strings.reduce(
-            (acc, str, i) => acc + str + (i < values.length ? "?" : ""),
-            ""
-          );
-    
-          // Execute the SQL query with the provided values
-          return [...this.ctx.storage.sql.exec(query, ...values)] as T[];
+            // Construct the SQL query with placeholders
+            query = strings.reduce(
+                (acc, str, i) => acc + str + (i < values.length ? "?" : ""),
+                ""
+            );
+        
+            // Execute the SQL query with the provided values
+            return [...this.ctx.storage.sql.exec(query, ...values)] as T[];
         } catch (e) {
-          console.error(`failed to execute sql query: ${query}`, e);
-          throw e;
+            console.error(`failed to execute sql query: ${query}`, e);
+            throw e;
         }
     }
 
@@ -189,7 +182,6 @@ export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
     if (typeof input === 'function' && !input.prototype) {
         return {
             async fetch(request: Request, env: E, ctx: ExecutionContext): Promise<Response> {
-                // Proceed with normal execution
                 const handler = input as RequestHandler<E>;
                 const result = await handler(request, env, ctx);
                 return result;
@@ -204,7 +196,6 @@ export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
     if (ObjectClass && ObjectClass.prototype instanceof Worker) {
         return {
             async fetch(request: Request, env: E, ctx: ExecutionContext): Promise<Response> {
-                // Proceed with normal execution
                 const instance = new (ObjectClass as new(ctx: ExecutionContext, env: E) => any)(ctx, env);
                 return instance.fetch(request);
             }
@@ -273,40 +264,6 @@ export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
             );
         }
     };
-}
-
-/**
- * Utility function to fetch an Actor instance and handle a request.
- * This is a convenience method for making requests to Durable Objects.
- * @template T - The type of the Actor class
- * @param request - The request to handle
- * @param ActorClass - The class constructor for the Actor
- * @returns A Promise that resolves to a Response
- */
-export async function fetchActor<T extends Actor<any>>(
-    request: Request,
-    ActorClass: new (state: ActorState, env: any) => T
-): Promise<Response> {
-    try {
-        const className = ActorClass.name;
-        const idString = (ActorClass as any).nameFromRequest?.(request) ?? Actor.nameFromRequest(request);
-        const stub = getActor(ActorClass, idString);
-
-        if (!stub) {
-            return new Response(
-                `No DurableObject binding found for class ${className}. Make sure it's defined in wrangler.jsonc`,
-                { status: 404 }
-            );
-        }
-
-        stub.setIdentifier(idString);
-        return stub.fetch(request);
-    } catch (error) {
-        return new Response(
-            `Error fetching actor: ${error instanceof Error ? error.message : 'Unknown error'}`,
-            { status: 500 }
-        );
-    }
 }
 
 export function getActor<T extends Actor<any>>(

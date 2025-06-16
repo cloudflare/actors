@@ -1,4 +1,4 @@
-import { Actor, handler, fetchActor, Worker, ActorState } from '../../../packages/core/src'
+import { Actor, handler, Worker, ActorState } from '../../../packages/core/src'
 
 /**
  * ------------
@@ -14,6 +14,7 @@ import { Actor, handler, fetchActor, Worker, ActorState } from '../../../package
  * - `handler` acts to define which primitive should be the entrypoint (Worker, Actor, or Request)
  * - When using `handler` everything that isn't a Worker gets invisibly wrapped in a Worker for you
  * - You can extend either `Worker` or `Actor` and your code becomes stateless or stateful
+ * - Actor is opinionated in the fact that it requires `class_name` and `name` to match in your wrangler.jsonc
  * - Actor comes with helper property classes such as `.storage` and `.alarms` to trigger helpful functions
  * - In an Actor class you can execute SQL simply by using backticks – "this.sql`SELECT 1;`;"
  * - You can manually apply migrations by running `this.storage.runMigrations()`
@@ -26,7 +27,7 @@ import { Actor, handler, fetchActor, Worker, ActorState } from '../../../package
 // -----------------------------------------------------
 export default handler((request: Request) => {
     return new Response('Hello, World!')
-})
+});
 
 
 // -------------------------------------------------
@@ -34,7 +35,8 @@ export default handler((request: Request) => {
 // -------------------------------------------------
 export class MyWorker extends Worker<Env> {
     async fetch(request: Request): Promise<Response> {
-        return fetchActor(request, MyRPCActor);
+        const actor = MyRPCActor.get('default');
+        return (await actor?.fetch(request)) ?? new Response('Not found', { status: 404 });
     }
 }
 // export default handler(MyWorker);
@@ -71,7 +73,7 @@ export class MyRPCActor extends Actor<Env> {
 // -----------------------------------------------
 export class MyStorageActor extends Actor<Env> {
     // Defined a custom name within the Actor to reference the Actor instance
-    nameFromRequest(request: Request) {
+    static nameFromRequest(request: Request) {
         return "foobar"
     }
 
@@ -96,7 +98,7 @@ export class MyStorageActor extends Actor<Env> {
 
         // Now we can proceed with querying
         const query = this.sql`SELECT * FROM sqlite_master LIMIT ${10};`
-        return new Response(`${JSON.stringify(query)}`)
+        return new Response(`Identifier (${this.identifier} – ${this.ctx.id.toString()}) = ${JSON.stringify(query)}`)
     }
 }
 // export default handler(MyStorageActor)
