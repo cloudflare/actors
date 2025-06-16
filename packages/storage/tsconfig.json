@@ -3,7 +3,8 @@
     "compilerOptions": {
       "outDir": "../../dist/storage",
       "rootDir": ".",
-      "composite": true
+      "composite": true,
+      "types": ["@cloudflare/vitest-pool-workers", "./cloudflare-test"]
     },
     "include": ["**/*.ts"],
     "references": []

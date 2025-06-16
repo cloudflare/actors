@@ -1,4 +1,3 @@
-import { DurableObject } from "cloudflare:workers";
 import { parseCronExpression } from "cron-schedule";
 import { nanoid } from "nanoid";
 import { Actor } from "../../core/src";

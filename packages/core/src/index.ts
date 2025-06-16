@@ -108,17 +108,17 @@ export abstract class Actor<E> extends DurableObject<E> {
     ) {
         let query = "";
         try {
-          // Construct the SQL query with placeholders
-          query = strings.reduce(
-            (acc, str, i) => acc + str + (i < values.length ? "?" : ""),
-            ""
-          );
-    
-          // Execute the SQL query with the provided values
-          return [...this.ctx.storage.sql.exec(query, ...values)] as T[];
+            // Construct the SQL query with placeholders
+            query = strings.reduce(
+                (acc, str, i) => acc + str + (i < values.length ? "?" : ""),
+                ""
+            );
+        
+            // Execute the SQL query with the provided values
+            return [...this.ctx.storage.sql.exec(query, ...values)] as T[];
         } catch (e) {
-          console.error(`failed to execute sql query: ${query}`, e);
-          throw e;
+            console.error(`failed to execute sql query: ${query}`, e);
+            throw e;
         }
     }
 
@@ -182,7 +182,6 @@ export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
     if (typeof input === 'function' && !input.prototype) {
         return {
             async fetch(request: Request, env: E, ctx: ExecutionContext): Promise<Response> {
-                // Proceed with normal execution
                 const handler = input as RequestHandler<E>;
                 const result = await handler(request, env, ctx);
                 return result;
@@ -197,7 +196,6 @@ export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
     if (ObjectClass && ObjectClass.prototype instanceof Worker) {
         return {
             async fetch(request: Request, env: E, ctx: ExecutionContext): Promise<Response> {
-                // Proceed with normal execution
                 const instance = new (ObjectClass as new(ctx: ExecutionContext, env: E) => any)(ctx, env);
                 return instance.fetch(request);
             }
