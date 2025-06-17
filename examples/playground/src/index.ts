@@ -1,4 +1,7 @@
+import { DurableObject } from "cloudflare:workers"
 import { Actor, handler, Worker, ActorState } from '../../../packages/core/src'
+import { Storage } from '../../../packages/storage/src'
+import { Alarms } from "../../../packages/alarms/src";
 
 /**
  * ------------
@@ -47,7 +50,7 @@ export class MyWorker extends Worker<Env> {
 // ---------------------------------------------
 export class MyRPCWorker extends Worker<Env> {
     async fetch(request: Request): Promise<Response> {
-        const actor = MyAlarmActor.get('default');
+        const actor = MyStorageActor.get('default');
         const result = await actor?.add(2, 3);
         return new Response(`Answer = ${result}`);
     }
@@ -60,7 +63,7 @@ export class MyRPCWorker extends Worker<Env> {
 // -------------------------------------------------
 export class MyRPCActor extends Actor<Env> {
     async fetch(request: Request): Promise<Response> {
-        const actor = MyAlarmActor.get('default');
+        const actor = MyStorageActor.get('default');
         const result = await actor?.add(3, 4);
         return new Response(`Answer = ${result}`);
     }
@@ -92,12 +95,18 @@ export class MyStorageActor extends Actor<Env> {
         }];
     }
 
+    // Called from RPC in another Worker or Actor
+    public async add(a: number, b: number): Promise<number> {
+        return a + b;
+    }
+
     async fetch(request: Request): Promise<Response> {
         // Run migrations before executing our query
         await this.storage.runMigrations();
 
         // Now we can proceed with querying
-        const query = this.sql`SELECT * FROM sqlite_master LIMIT ${10};`
+        const limit = await this.add(5, 5);
+        const query = this.sql`SELECT * FROM sqlite_master LIMIT ${limit};`
         return new Response(`Identifier (${this.identifier} – ${this.ctx.id.toString()}) = ${JSON.stringify(query)}`)
     }
 }
@@ -114,11 +123,6 @@ export class MyAlarmActor extends Actor<Env> {
         return new Response('Alarm set')
     }
 
-    // Called from RPC in another Worker or Actor
-    public async add(a: number, b: number): Promise<number> {
-        return a + b;
-    }
-
     // Called from our alarm defined above
     public async addFromAlarm(a: number, b: number, desc: string): Promise<number> {
         console.log(`Alarm triggered, you can view this alarm in your Worker logs: ${a} + ${b} (desc: ${desc})`);
@@ -126,3 +130,51 @@ export class MyAlarmActor extends Actor<Env> {
     }
 }
 // export default handler(MyAlarmActor);
+
+
+// -------------------------------------------------------------
+// Example Durable Object using the Storage & Alarms classes
+// -------------------------------------------------------------
+// This is how you would use classes *without* the Actor pattern
+// -------------------------------------------------------------
+export class MyDurableObject extends DurableObject<Env> {
+    storage: Storage;
+    alarms: Alarms<this>;
+    
+    constructor(ctx: DurableObjectState, env: Env) {
+        super(ctx, env)
+        this.storage = new Storage(ctx.storage);
+        this.alarms = new Alarms(ctx, this);
+    }
+
+    async fetch(request: Request): Promise<Response> {
+        this.alarms.schedule(10, 'addFromAlarm', [1, 2]);
+        const query = this.storage.sql`SELECT 10;`
+        return new Response(`Query Result: ${JSON.stringify(query)}`);
+    }
+
+    // This method is required to handle alarms
+    alarm(alarmInfo?: any): void | Promise<void> {
+        // Forward the alarm to the alarms handler
+        if (this.alarms) {
+            return this.alarms.alarm(alarmInfo);
+        }
+        return;
+    }
+
+    // Called from our alarm defined above
+    public async addFromAlarm(a: number, b: number): Promise<number> {
+        console.log(`Alarm triggered, you can view this alarm in your Worker logs: ${a} + ${b}`);
+        return a + b;
+    }
+}
+
+// export default {
+//     async fetch(request: Request, env: Env, ctx: ExecutionContext) {
+//         const id = env.MyDurableObject.idFromName(new URL(request.url).pathname);
+//         const stub = env.MyDurableObject.get(id);
+//         const response = await stub.fetch(request);
+
+//         return response;
+//     },
+// };

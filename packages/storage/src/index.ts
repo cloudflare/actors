@@ -1,3 +1,4 @@
+import type { DurableObjectStorage } from "@cloudflare/workers-types";
 import { SQLSchemaMigration, SQLSchemaMigrations } from "./sql-schema-migrations";
 
 /**
@@ -37,7 +38,7 @@ type StudioRequest = StudioQueryRequest | StudioTransactionRequest;
  */
 export class Storage {
     public raw: DurableObjectStorage | undefined;
-    public sql: SqlStorage | undefined;
+    public sqlStorage: SqlStorage | undefined;
     private _migrationsArray: SQLSchemaMigration[] = [];
     public hasRanMigrations: boolean = false;
     
@@ -71,7 +72,7 @@ export class Storage {
      */
     constructor(storage?: DurableObjectStorage) {
         this.raw = storage;
-        this.sql = storage?.sql;
+        this.sqlStorage = storage?.sql;
 
         if (storage) {
             this._migrations = new SQLSchemaMigrations({
@@ -94,9 +95,9 @@ export class Storage {
             let cursor;
 
             if (params && params.length) {
-                cursor = this.sql?.exec(sql, ...params)
+                cursor = this.sqlStorage?.exec(sql, ...params)
             } else {
-                cursor = this.sql?.exec(sql)
+                cursor = this.sqlStorage?.exec(sql)
             }
 
             if (!cursor) {
@@ -108,6 +109,37 @@ export class Storage {
         } catch (error) {
             console.error('SQL Execution Error:', error);
             throw error
+        }
+    }
+
+    /**
+     * Execute SQL queries against the Agent's database
+     * @template T Type of the returned rows
+     * @param strings SQL query template strings
+     * @param values Values to be inserted into the query
+     * @returns Array of query results
+     */
+    sql<T = Record<string, string | number | boolean | null>>(
+        strings: TemplateStringsArray,
+        ...values: (string | number | boolean | null)[]
+    ) {
+        let query = "";
+        try {
+            // Construct the SQL query with placeholders
+            query = strings.reduce(
+                (acc, str, i) => acc + str + (i < values.length ? "?" : ""),
+                ""
+            );
+        
+            if (!this.sqlStorage) {
+                throw new Error('No SQL storage provided');
+            }
+            
+            // Execute the SQL query with the provided values
+            return [...this.sqlStorage.exec(query, ...values)] as T[];
+        } catch (e) {
+            console.error(`failed to execute sql query: ${query}`, e);
+            throw e;
         }
     }
 
