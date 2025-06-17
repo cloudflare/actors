@@ -1,6 +1,7 @@
 import { parseCronExpression } from "cron-schedule";
 import { nanoid } from "nanoid";
 import { Actor } from "../../core/src";
+import { DurableObject } from "cloudflare:workers";
 
 // TODO:
 // - Replace usage of Agents name
@@ -49,7 +50,7 @@ export type Schedule<T = string, K extends keyof any = string> = {
     }
 );
 
-export class Alarms<P extends Actor<any>> {
+export class Alarms<P extends DurableObject<any>> {
     private parent: P;
     public storage: DurableObjectStorage | undefined;
 

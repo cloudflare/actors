@@ -9,7 +9,8 @@
 			"new_sqlite_classes": [
 				"MyRPCActor",
 				"MyStorageActor",
-                "MyAlarmActor"
+                "MyAlarmActor",
+				"MyDurableObject"
 			],
 			"tag": "v1"
 		}
@@ -27,6 +28,10 @@
 			{
 				"class_name": "MyAlarmActor",
 				"name": "MyAlarmActor"
+			},
+			{
+				"class_name": "MyDurableObject",
+				"name": "MyDurableObject"
 			}
 		]
 	},
