@@ -7,7 +7,8 @@ import { Alarms } from "../../../packages/alarms/src";
  * ------------
  * How to test:
  * ------------
- * - Uncomment any of the examples below and run `npm run dev`
+ * - Run `npm run cf-typegen && npm install` at the root level of the actor repo
+ * - Uncomment any of the examples below and run `npm run dev` inside the `examples/playground` folder
  * - Visit https://localhost:5173 to trigger this file
  * 
  * -------------

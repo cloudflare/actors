@@ -1,12 +1,6 @@
 import { parseCronExpression } from "cron-schedule";
 import { nanoid } from "nanoid";
-import { Actor } from "../../core/src";
 import { DurableObject } from "cloudflare:workers";
-
-// TODO:
-// - Replace usage of Agents name
-// - Implement `scheduleEvery` with recurring time in milliseconds (containers use case)
-// - Implement on save to indent code
 
 function getNextCronTime(cron: string) {
     const interval = parseCronExpression(cron);
@@ -74,31 +68,10 @@ export class Alarms<P extends DurableObject<any>> {
                 )
             `);
       
-              // execute any pending alarms and schedule the next alarm
+              // Execute any pending alarms and schedule the next alarm
               await this.alarm();
             });
         });
-
-        // void ctx?.blockConcurrencyWhile(async () => {
-        //     return this._tryCatch(async () => {
-        //       // Create alarms table if it doesn't exist
-        //       this.sql`
-        //       CREATE TABLE IF NOT EXISTS _actor_alarms (
-        //         id TEXT PRIMARY KEY NOT NULL DEFAULT (randomblob(9)),
-        //         callback TEXT,
-        //         payload TEXT,
-        //         type TEXT NOT NULL CHECK(type IN ('scheduled', 'delayed', 'cron')),
-        //         time INTEGER,
-        //         delayInSeconds INTEGER,
-        //         cron TEXT,
-        //         created_at INTEGER DEFAULT (unixepoch())
-        //       )
-        //     `;
-      
-        //       // execute any pending alarms and schedule the next alarm
-        //       await this.alarm();
-        //     });
-        // });
     }
 
     /**
