@@ -1,5 +1,5 @@
 {
-    "name": "actors",
+    "name": "@cloudflare/actors",
     "version": "0.0.1-alpha.0",
     "description": "An easier way to build with Cloudflare Durable Objects",
     "type": "module",
