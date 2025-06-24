@@ -48,6 +48,10 @@
         "type": "git",
         "url": "https://github.com/cloudflare/actors"
     },
+    "optionalDependencies": {
+        "cron-schedule": "^5.0.4",
+        "nanoid": "^5.1.5"
+    },
     "devDependencies": {
         "@cloudflare/vite-plugin": "1.2.2",
         "typescript": "^5.5.2",
