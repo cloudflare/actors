@@ -7,7 +7,7 @@
     "scripts": {
       "build": "tsc -p ."
     },
-    "dependencies": {
+    "peerDependencies": {
       "cron-schedule": "^5.0.4",
       "nanoid": "^5.1.5"
     },
