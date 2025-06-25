@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers"
-import { Actor, handler, Worker, ActorState, getActor } from '../../../packages/core/src'
+import { Actor, handler, Worker, ActorState } from '../../../packages/core/src'
 import { Storage } from '../../../packages/storage/src'
 import { Alarms } from "../../../packages/alarms/src";
 
@@ -62,18 +62,18 @@ export class MyRPCWorker extends Worker<Env> {
 // -----------------------------------------------------
 // Example Worker polling used instance names from Actor
 // -----------------------------------------------------
-export class MyInstanceNameWorker extends Worker<Env> {
+export class MyInstancesNamesWorker extends Worker<Env> {
     async fetch(request: Request): Promise<Response> {
         // For this to work, you must deploy and run the `MyStorageActor` from
         // the new `handler(...)` method with `track: { enabled: true }`. Those
         // instance names are stored in another instance with a default name of
         // `_cf_actors`.
-        const trackerActor = getActor(MyStorageActor, '_cf_actors');
+        const trackerActor = MyStorageActor.get('_cf_actors');
         const query = await trackerActor!.sql`SELECT * FROM actors;`
         return new Response(JSON.stringify(query), { headers: { 'Content-Type': 'application/json' } })
     }
 }
-// export default handler(MyInstanceNameWorker);
+// export default handler(MyInstancesNamesWorker);
 
 
 // ---------------------------------------------------
@@ -81,8 +81,9 @@ export class MyInstanceNameWorker extends Worker<Env> {
 // ---------------------------------------------------
 export class MyDeleteInstanceWorker extends Worker<Env> {
     async fetch(request: Request): Promise<Response> {
-        const actor = getActor(MyStorageActor, 'actorNameToDelete');
-        actor?.destroy();
+        // Deleting a specific instance inside our tracking instance
+        const actor = MyStorageActor.get('foobar');
+        await actor?.destroy({ trackingInstance: '_cf_actors' });
         return new Response('Actor deleted');
     }
 }
@@ -167,11 +168,11 @@ export class MyAlarmActor extends Actor<Env> {
 // export default handler(MyAlarmActor);
 
 
-// -------------------------------------------------------------
+// -----------------------------------------------------------
 // Example Durable Object using the Storage & Alarms classes
-// -------------------------------------------------------------
-// This is how you would use classes *without* the Actor pattern
-// -------------------------------------------------------------
+// -----------------------------------------------------------
+// This is how you would use classes *without* the Actor class
+// -----------------------------------------------------------
 export class MyDurableObject extends DurableObject<Env> {
     storage: Storage;
     alarms: Alarms<this>;
