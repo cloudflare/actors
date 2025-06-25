@@ -134,7 +134,15 @@ export abstract class Actor<E> extends DurableObject<E> {
      * Destroy the Actor by removing all actor library specific tables and state
      * that is associated with the actor.
      */
-    async destroy() {
+    async destroy(_?: { trackingInstance?: string }) {
+        // If tracking instance is defined, delete the instance name from the tracking instance map.
+        if (_?.trackingInstance && this.identifier) {
+            const trackerActor = getActor(this.constructor as new (state: DurableObjectState, env: E) => Actor<E>, _?.trackingInstance);
+            if (trackerActor) {
+                await trackerActor.sql`DELETE FROM actors WHERE identifier = ${this.identifier};`;
+            }
+        }
+
         // Delete all alarms
         await this.ctx.storage.deleteAlarm();
         await this.ctx.storage.deleteAll();
@@ -232,9 +240,10 @@ export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
 
                     // If tracking is enabled, track the current actor identifier in a separate durable object.
                     if (opts?.track?.enabled) {
+                        const trackingName = opts.track?.trackingInstance ?? '_cf_actors';
                         const trackingNamespace = envObj[bindingName];
                         const trackingIdString = (ObjectClass as any).nameFromRequest(request);
-                        const trackingId = trackingNamespace.idFromName('_cf_actors');
+                        const trackingId = trackingNamespace.idFromName(trackingName);
                         const trackingStub = trackingNamespace.get(trackingId) as unknown as Actor<E>;
                         trackingStub.setIdentifier(trackingIdString);
                         
@@ -283,5 +292,7 @@ export function getActor<T extends Actor<any>>(
 
     const namespace = envObj[bindingName];
     const stubId = namespace.idFromName(id);
-    return namespace.get(stubId) as DurableObjectStub<T>;
+    const stub = namespace.get(stubId) as DurableObjectStub<T>;
+    stub.setIdentifier(id);
+    return stub;
 }
