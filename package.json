@@ -1,6 +1,6 @@
 {
     "name": "@cloudflare/actors",
-    "version": "0.0.1-alpha.3",
+    "version": "0.0.1-beta.0",
     "description": "An easier way to build with Cloudflare Durable Objects",
     "type": "module",
     "main": "./dist/index.js",
