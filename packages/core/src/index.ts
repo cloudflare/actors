@@ -241,6 +241,10 @@ export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
                     // If tracking is enabled, track the current actor identifier in a separate durable object.
                     if (opts?.track?.enabled) {
                         const trackingName = opts.track?.trackingInstance ?? '_cf_actors';
+                        if (trackingName === idString) {
+                            return new Response('Cannot access the tracking instance', { status: 404 });
+                        }
+
                         const trackingNamespace = envObj[bindingName];
                         const trackingIdString = (ObjectClass as any).nameFromRequest(request);
                         const trackingId = trackingNamespace.idFromName(trackingName);
