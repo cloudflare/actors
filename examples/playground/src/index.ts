@@ -29,9 +29,9 @@ import { Alarms } from "../../../packages/alarms/src";
 // -----------------------------------------------------
 // Example response without explicitly defining a Worker
 // -----------------------------------------------------
-// export default handler((request: Request) => {
-//     return new Response('Hello, World!')
-// });
+export default handler((request: Request) => {
+    return new Response('Hello, World!')
+});
 
 
 // -------------------------------------------------
@@ -43,7 +43,7 @@ export class MyWorker extends Entrypoint<Env> {
         return (await actor?.fetch(request)) ?? new Response('Not found', { status: 404 });
     }
 }
-export default handler(MyWorker);
+// export default handler(MyWorker);
 
 
 // ---------------------------------------------
