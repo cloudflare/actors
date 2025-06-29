@@ -59,8 +59,9 @@ export abstract class Actor<E> extends DurableObject<E> {
      * @param id - The ID of the actor to get
      * @returns The actor instance
      */
-    static get<T extends Actor<any>>(this: new (state: ActorState, env: any) => T, id: string): DurableObjectStub<T> | undefined {
-        return getActor(this, id);
+    static get<T extends Actor<any>>(this: new (state: ActorState, env: any) => T, id: string): DurableObjectStub<T> {
+        const stub = getActor(this, id);
+        return stub;
     }
 
     /**
@@ -283,7 +284,7 @@ export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
 export function getActor<T extends Actor<any>>(
     ActorClass: new (state: ActorState, env: any) => T,
     id: string
-): DurableObjectStub<T> | undefined {
+): DurableObjectStub<T> {
     const className = ActorClass.name;
     const envObj = env as unknown as Record<string, DurableObjectNamespace>;
     
@@ -292,7 +293,9 @@ export function getActor<T extends Actor<any>>(
         return key === className || binding?.class_name === className;
     });
 
-    if (!bindingName) return undefined;
+    if (!bindingName) {
+        throw new Error(`No Durable Object binding found for actor class ${className}. Check update your wrangler.jsonc to match the binding "name" and "class_name" to be the same as the class name.`);
+    }
 
     const namespace = envObj[bindingName];
     const stubId = namespace.idFromName(id);

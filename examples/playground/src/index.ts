@@ -52,7 +52,7 @@ export class MyWorker extends Worker<Env> {
 export class MyRPCWorker extends Worker<Env> {
     async fetch(request: Request): Promise<Response> {
         const actor = MyStorageActor.get('default');
-        const result = await actor?.add(2, 3);
+        const result = await actor.add(2, 3);
         return new Response(`Answer = ${result}`);
     }
 }
@@ -69,7 +69,7 @@ export class MyInstancesNamesWorker extends Worker<Env> {
         // instance names are stored in another instance with a default name of
         // `_cf_actors`.
         const trackerActor = MyStorageActor.get('_cf_actors');
-        const query = await trackerActor!.sql`SELECT * FROM actors;`
+        const query = await trackerActor.sql`SELECT * FROM actors;`
         return new Response(JSON.stringify(query), { headers: { 'Content-Type': 'application/json' } })
     }
 }
@@ -83,7 +83,7 @@ export class MyDeleteInstanceWorker extends Worker<Env> {
     async fetch(request: Request): Promise<Response> {
         // Deleting a specific instance inside our tracking instance
         const actor = MyStorageActor.get('foobar');
-        await actor?.destroy({ trackingInstance: '_cf_actors' });
+        await actor.destroy({ trackingInstance: '_cf_actors' });
         return new Response('Actor deleted');
     }
 }
@@ -96,7 +96,7 @@ export class MyDeleteInstanceWorker extends Worker<Env> {
 export class MyRPCActor extends Actor<Env> {
     async fetch(request: Request): Promise<Response> {
         const actor = MyStorageActor.get('default');
-        const result = await actor?.add(3, 4);
+        const result = await actor.add(3, 4);
         return new Response(`Answer = ${result}`);
     }
 }
