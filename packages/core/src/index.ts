@@ -247,9 +247,9 @@ export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
                         const trackingStub = trackingNamespace.get(trackingId) as unknown as Actor<E>;
                         trackingStub.setIdentifier(trackingIdString);
                         
-                        trackingStub.sql`CREATE TABLE IF NOT EXISTS actors (identifier TEXT PRIMARY KEY, last_accessed TEXT)`;
+                        await trackingStub.__studio({ type: 'query', statement: 'CREATE TABLE IF NOT EXISTS actors (identifier TEXT PRIMARY KEY, last_accessed TEXT)' });
                         const currentDateTime = new Date().toISOString();
-                        trackingStub.sql`INSERT INTO actors (identifier, last_accessed) VALUES ('${trackingIdString}', '${currentDateTime}') ON CONFLICT(identifier) DO UPDATE SET last_accessed = '${currentDateTime}'`;
+                        await trackingStub.__studio({ type: 'query', statement: `INSERT INTO actors (identifier, last_accessed) VALUES (?, ?) ON CONFLICT(identifier) DO UPDATE SET last_accessed = ?`, params: [trackingIdString, currentDateTime, currentDateTime] });
                     }
 
                     return stub.fetch(request);
