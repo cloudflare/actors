@@ -19,11 +19,13 @@ interface SqlStorage {
 interface StudioQueryRequest {
 	type: 'query';
 	statement: string;
+    params?: any[]
 }
 
 interface StudioTransactionRequest {
 	type: 'transaction';
 	statements: string[];
+    params?: any[]
 }
 
 type StudioRequest = StudioQueryRequest | StudioTransactionRequest;
@@ -185,12 +187,12 @@ export class Storage {
         const storage = this.raw as DurableObjectStorage;
 
         if (cmd.type === 'query') {
-            return this.query(cmd.statement);
+            return this.query(cmd.statement, cmd.params);
         } else if (cmd.type === 'transaction') {
             return storage.transaction(async () => {
                 const results = [];
                 for (const statement of cmd.statements) {
-                    results.push(await this.query(statement, undefined, true));
+                    results.push(await this.query(statement, cmd.params, true));
                 }
 
                 return results;

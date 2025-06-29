@@ -253,7 +253,7 @@ export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
                         
                         await trackingStub.__studio({ type: 'query', statement: 'CREATE TABLE IF NOT EXISTS actors (identifier TEXT PRIMARY KEY, last_accessed TEXT)' });
                         const currentDateTime = new Date().toISOString();
-                        await trackingStub.__studio({ type: 'query', statement: `INSERT INTO actors (identifier, last_accessed) VALUES ('${trackingIdString}', '${currentDateTime}') ON CONFLICT(identifier) DO UPDATE SET last_accessed = '${currentDateTime}'` });
+                        await trackingStub.__studio({ type: 'query', statement: `INSERT INTO actors (identifier, last_accessed) VALUES (?, ?) ON CONFLICT(identifier) DO UPDATE SET last_accessed = ?`, params: [trackingIdString, currentDateTime, currentDateTime] });
                     }
 
                     return stub.fetch(request);
