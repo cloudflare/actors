@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers"
-import { Actor, handler, Worker, ActorState } from '../../../packages/core/src'
+import { Actor, handler, Entrypoint, ActorState } from '../../../packages/core/src'
 import { Storage } from '../../../packages/storage/src'
 import { Alarms } from "../../../packages/alarms/src";
 
@@ -29,27 +29,27 @@ import { Alarms } from "../../../packages/alarms/src";
 // -----------------------------------------------------
 // Example response without explicitly defining a Worker
 // -----------------------------------------------------
-export default handler((request: Request) => {
-    return new Response('Hello, World!')
-});
+// export default handler((request: Request) => {
+//     return new Response('Hello, World!')
+// });
 
 
 // -------------------------------------------------
 // Example Worker that forwards requests to an Actor
 // -------------------------------------------------
-export class MyWorker extends Worker<Env> {
+export class MyWorker extends Entrypoint<Env> {
     async fetch(request: Request): Promise<Response> {
         const actor = MyRPCActor.get('default');
         return (await actor?.fetch(request)) ?? new Response('Not found', { status: 404 });
     }
 }
-// export default handler(MyWorker);
+export default handler(MyWorker);
 
 
 // ---------------------------------------------
 // Example Worker with RPC calling into an Actor
 // ---------------------------------------------
-export class MyRPCWorker extends Worker<Env> {
+export class MyRPCWorker extends Entrypoint<Env> {
     async fetch(request: Request): Promise<Response> {
         const actor = MyStorageActor.get('default');
         const result = await actor?.add(2, 3);
@@ -62,7 +62,7 @@ export class MyRPCWorker extends Worker<Env> {
 // -----------------------------------------------------
 // Example Worker polling used instance names from Actor
 // -----------------------------------------------------
-export class MyInstancesNamesWorker extends Worker<Env> {
+export class MyInstancesNamesWorker extends Entrypoint<Env> {
     async fetch(request: Request): Promise<Response> {
         // For this to work, you must deploy and run the `MyStorageActor` from
         // the new `handler(...)` method with `track: { enabled: true }`. Those
@@ -79,7 +79,7 @@ export class MyInstancesNamesWorker extends Worker<Env> {
 // ---------------------------------------------------
 // Example Worker deleting single instance of an Actor
 // ---------------------------------------------------
-export class MyDeleteInstanceWorker extends Worker<Env> {
+export class MyDeleteInstanceWorker extends Entrypoint<Env> {
     async fetch(request: Request): Promise<Response> {
         // Deleting a specific instance inside our tracking instance
         const actor = MyStorageActor.get('foobar');
