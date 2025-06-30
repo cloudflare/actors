@@ -236,7 +236,7 @@ export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
                         
                         await trackingStub.__studio({ type: 'query', statement: 'CREATE TABLE IF NOT EXISTS actors (identifier TEXT PRIMARY KEY, last_accessed TEXT)' });
                         const currentDateTime = new Date().toISOString();
-                        await trackingStub.__studio({ type: 'query', statement: `INSERT INTO actors (identifier, last_accessed) VALUES (?, ?) ON CONFLICT(identifier) DO UPDATE SET last_accessed = ?`, params: [trackingName, currentDateTime, currentDateTime] });
+                        await trackingStub.__studio({ type: 'query', statement: `INSERT INTO actors (identifier, last_accessed) VALUES (?, ?) ON CONFLICT(identifier) DO UPDATE SET last_accessed = ?`, params: [idString, currentDateTime, currentDateTime] });
                     }
 
                     return stub.fetch(request);
@@ -282,6 +282,6 @@ export function getActor<T extends Actor<any>>(
     const namespace = envObj[bindingName];
     const stubId = namespace.idFromName(id);
     const stub = namespace.get(stubId) as DurableObjectStub<T>;
-    stub.setIdentifier(id); // <- This does not work as expected
+    stub.setIdentifier(id);
     return stub;
 }
