@@ -9,6 +9,12 @@ import { Alarms } from "../../alarms/src/index";
 export type ActorState = DurableObjectState;
 
 /**
+ * Type definition for a constructor of an actor.
+ * @template T - The type of the actor
+ */
+export type ActorConstructor<T extends Actor<any> = Actor<any>> = new (state: ActorState, env: any) => T;
+
+/**
  * Provide a default name value for an actor.
  */
 const DEFAULT_ACTOR_NAME = "default";
@@ -138,7 +144,7 @@ export abstract class Actor<E> extends DurableObject<E> {
     async destroy(_?: { trackingInstance?: string }) {
         // If tracking instance is defined, delete the instance name from the tracking instance map.
         if (_?.trackingInstance && this.identifier) {
-            const trackerActor = getActor(this.constructor as new (state: DurableObjectState, env: E) => Actor<E>, _?.trackingInstance);
+            const trackerActor = getActor(this.constructor as ActorConstructor<Actor<E>>, _?.trackingInstance);
             if (trackerActor) {
                 await trackerActor.sql`DELETE FROM actors WHERE identifier = ${this.identifier};`;
             }
@@ -216,28 +222,8 @@ export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
         const worker = {
             async fetch(request: Request, env: E, ctx: ExecutionContext): Promise<Response> {
                 try {
-                    // Find the namespace that matches this class's name
-                    const className = ObjectClass.name;
-                    const envObj = env as Record<string, DurableObjectNamespace>;
-                    
-                    // Find the binding that matches this class name
-                    const bindingName = Object.keys(envObj).find(key => {
-                        const binding = (env as any).__DURABLE_OBJECT_BINDINGS?.[key];
-                        return key === className || binding?.class_name === className;
-                    });
-
-                    if (!bindingName) {
-                        return new Response(
-                            `No DurableObject binding found for class ${className}. Make sure it's defined in wrangler.jsonc`,
-                            { status: 404 }
-                        );
-                    }
-
-                    const namespace = envObj[bindingName];
                     const idString = (ObjectClass as any).nameFromRequest(request);
-                    const id = namespace.idFromName(idString);
-                    const stub = namespace.get(id) as unknown as Actor<E>;
-                    stub.setIdentifier(idString);
+                    const stub = getActor(ObjectClass as ActorConstructor<Actor<E>>, idString);
 
                     // If tracking is enabled, track the current actor identifier in a separate durable object.
                     if (opts?.track?.enabled) {
@@ -246,15 +232,11 @@ export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
                             return new Response('Cannot access the tracking instance', { status: 404 });
                         }
 
-                        const trackingNamespace = envObj[bindingName];
-                        const trackingIdString = (ObjectClass as any).nameFromRequest(request);
-                        const trackingId = trackingNamespace.idFromName(trackingName);
-                        const trackingStub = trackingNamespace.get(trackingId) as unknown as Actor<E>;
-                        trackingStub.setIdentifier(trackingIdString);
+                        const trackingStub = getActor(ObjectClass as ActorConstructor<Actor<E>>, trackingName) as unknown as Actor<E>;
                         
                         await trackingStub.__studio({ type: 'query', statement: 'CREATE TABLE IF NOT EXISTS actors (identifier TEXT PRIMARY KEY, last_accessed TEXT)' });
                         const currentDateTime = new Date().toISOString();
-                        await trackingStub.__studio({ type: 'query', statement: `INSERT INTO actors (identifier, last_accessed) VALUES (?, ?) ON CONFLICT(identifier) DO UPDATE SET last_accessed = ?`, params: [trackingIdString, currentDateTime, currentDateTime] });
+                        await trackingStub.__studio({ type: 'query', statement: `INSERT INTO actors (identifier, last_accessed) VALUES (?, ?) ON CONFLICT(identifier) DO UPDATE SET last_accessed = ?`, params: [trackingName, currentDateTime, currentDateTime] });
                     }
 
                     return stub.fetch(request);
@@ -282,7 +264,7 @@ export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
 }
 
 export function getActor<T extends Actor<any>>(
-    ActorClass: new (state: ActorState, env: any) => T,
+    ActorClass: ActorConstructor<T>,
     id: string
 ): DurableObjectStub<T> {
     const className = ActorClass.name;
@@ -300,6 +282,6 @@ export function getActor<T extends Actor<any>>(
     const namespace = envObj[bindingName];
     const stubId = namespace.idFromName(id);
     const stub = namespace.get(stubId) as DurableObjectStub<T>;
-    stub.setIdentifier(id);
+    stub.setIdentifier(id); // <- This does not work as expected
     return stub;
 }

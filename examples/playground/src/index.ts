@@ -29,9 +29,9 @@ import { Alarms } from "../../../packages/alarms/src";
 // -----------------------------------------------------
 // Example response without explicitly defining a Worker
 // -----------------------------------------------------
-export default handler((request: Request) => {
-    return new Response('Hello, World!')
-});
+// export default handler((request: Request) => {
+//     return new Response('Hello, World!')
+// });
 
 
 // -------------------------------------------------
@@ -73,7 +73,7 @@ export class MyInstancesNamesWorker extends Worker<Env> {
         return new Response(JSON.stringify(query), { headers: { 'Content-Type': 'application/json' } })
     }
 }
-// export default handler(MyInstancesNamesWorker);
+export default handler(MyInstancesNamesWorker);
 
 
 // ---------------------------------------------------
