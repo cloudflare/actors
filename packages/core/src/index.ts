@@ -233,9 +233,8 @@ export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
                         }
 
                         const trackingStub = getActor(ObjectClass as ActorConstructor<Actor<E>>, trackingName) as unknown as Actor<E>;
-                        
-                        await trackingStub.__studio({ type: 'query', statement: 'CREATE TABLE IF NOT EXISTS actors (identifier TEXT PRIMARY KEY, last_accessed TEXT)' });
                         const currentDateTime = new Date().toISOString();
+                        await trackingStub.__studio({ type: 'query', statement: 'CREATE TABLE IF NOT EXISTS actors (identifier TEXT PRIMARY KEY, last_accessed TEXT)' });
                         await trackingStub.__studio({ type: 'query', statement: `INSERT INTO actors (identifier, last_accessed) VALUES (?, ?) ON CONFLICT(identifier) DO UPDATE SET last_accessed = ?`, params: [idString, currentDateTime, currentDateTime] });
                     }
 
