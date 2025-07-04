@@ -98,7 +98,7 @@ export class MyRPCActor extends Actor<Env> {
         super(ctx, env);
     
         this.ctx.blockConcurrencyWhile(async () => {
-            console.log('Constructor Identifier: ', this.identifier)
+            console.log('ID: ', this.identifier)
         });
     }
 
@@ -115,11 +115,6 @@ export class MyRPCActor extends Actor<Env> {
 // Example Actor with storage package interactions
 // -----------------------------------------------
 export class MyStorageActor extends Actor<Env> {
-    // Defined a custom name within the Actor to reference the Actor instance
-    static nameFromRequest(request: Request) {
-        return "foobar"
-    }
-
     constructor(ctx?: ActorState, env?: Env) {
         super(ctx, env);
 

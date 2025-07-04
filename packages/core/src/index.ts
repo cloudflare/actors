@@ -67,6 +67,12 @@ export abstract class Actor<E> extends DurableObject<E> {
      */
     static get<T extends Actor<any>>(this: new (state: ActorState, env: any) => T, id: string): DurableObjectStub<T> {
         const stub = getActor(this, id);
+
+        // This may seem repetitive from when we do this in `getActor` prior to returning the stub
+        // but this allows classes to do `this.ctx.blockConcurrencyWhile` and log out the identifier
+        // there. Without doing this again, that seems to fail for one reason or another.
+        stub.setIdentifier(id);
+
         return stub;
     }
 
