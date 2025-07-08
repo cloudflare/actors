@@ -11,14 +11,16 @@
     "exports": {
         ".": "./dist/core/src/index.js",
         "./storage": "./dist/storage/src/index.js",
-        "./alarms": "./dist/alarms/src/index.js"
+        "./alarms": "./dist/alarms/src/index.js",
+        "./queue": "./dist/queue/src/index.js"
     },
     "types": "./dist/core/src/index.d.ts",
     "typesVersions": {
         "*": {
             ".": ["./dist/core/src/index.d.ts"],
             "storage": ["./dist/storage/src/index.d.ts"],
-            "alarms": ["./dist/alarms/src/index.d.ts"]
+            "alarms": ["./dist/alarms/src/index.d.ts"],
+            "queue": ["./dist/queue/src/index.d.ts"]
         }
     },
     "files": [
