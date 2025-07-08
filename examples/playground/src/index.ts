@@ -94,6 +94,14 @@ export class MyDeleteInstanceWorker extends Worker<Env> {
 // Example Actor with RPC calling into another Actor
 // -------------------------------------------------
 export class MyRPCActor extends Actor<Env> {
+    constructor(ctx: DurableObjectState, env: Env) {
+        super(ctx, env);
+    
+        this.ctx.blockConcurrencyWhile(async () => {
+            console.log('ID: ', this.identifier)
+        });
+    }
+
     async fetch(request: Request): Promise<Response> {
         const actor = MyStorageActor.get('default');
         const result = await actor.add(3, 4);
@@ -107,11 +115,6 @@ export class MyRPCActor extends Actor<Env> {
 // Example Actor with storage package interactions
 // -----------------------------------------------
 export class MyStorageActor extends Actor<Env> {
-    // Defined a custom name within the Actor to reference the Actor instance
-    static nameFromRequest(request: Request) {
-        return "foobar"
-    }
-
     constructor(ctx?: ActorState, env?: Env) {
         super(ctx, env);
 
