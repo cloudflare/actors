@@ -303,7 +303,7 @@ export function getActor<T extends Actor<any>>(
 
     const namespace = envObj[bindingName];
     const stubId = namespace.idFromName(id);
-    const stub = locationHint ? namespace.get(stubId, { locationHint }) as DurableObjectStub<T> : namespace.get(stubId) as DurableObjectStub<T>;
+    const stub = namespace.get(stubId, { locationHint }) as DurableObjectStub<T>;
     
     stub.setIdentifier(id);
     return stub;
