@@ -15,6 +15,13 @@ export type ActorState = DurableObjectState;
 export type ActorConstructor<T extends Actor<any> = Actor<any>> = new (state: ActorState, env: any) => T;
 
 /**
+ * Configuration options for an actor.
+ */
+export type ActorConfiguration = {
+    locationHint?: 'wnam' | 'enam' | 'sam' | 'weur' | 'eeur' | 'apac' | 'oc' | 'afr' | 'me';
+}
+
+/**
  * Provide a default name value for an actor.
  */
 const DEFAULT_ACTOR_NAME = "default";
@@ -59,6 +66,15 @@ export abstract class Actor<E> extends DurableObject<E> {
     static nameFromRequest = (request: Request): string => {
         return DEFAULT_ACTOR_NAME;
     };
+
+    /**
+     * Static method to configure the actor.
+     * @param options 
+     * @returns 
+     */
+    static configuration = (request: Request): ActorConfiguration => {
+        return { locationHint: undefined };
+    }
 
     /**
      * Static method to get an actor instance by ID
@@ -274,6 +290,7 @@ export function getActor<T extends Actor<any>>(
 ): DurableObjectStub<T> {
     const className = ActorClass.name;
     const envObj = env as unknown as Record<string, DurableObjectNamespace>;
+    const locationHint = (ActorClass as any).configuration().locationHint;
     
     const bindingName = Object.keys(envObj).find(key => {
         const binding = (env as any).__DURABLE_OBJECT_BINDINGS?.[key];
@@ -286,7 +303,8 @@ export function getActor<T extends Actor<any>>(
 
     const namespace = envObj[bindingName];
     const stubId = namespace.idFromName(id);
-    const stub = namespace.get(stubId) as DurableObjectStub<T>;
+    const stub = locationHint ? namespace.get(stubId, { locationHint }) as DurableObjectStub<T> : namespace.get(stubId) as DurableObjectStub<T>;
+    
     stub.setIdentifier(id);
     return stub;
 }

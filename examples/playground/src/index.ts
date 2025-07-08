@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers"
-import { Actor, handler, Entrypoint, ActorState } from '../../../packages/core/src'
+import { Actor, handler, Entrypoint, ActorState, ActorConfiguration } from '../../../packages/core/src'
 import { Storage } from '../../../packages/storage/src'
 import { Alarms } from "../../../packages/alarms/src";
 
@@ -115,6 +115,14 @@ export class MyRPCActor extends Actor<Env> {
 // Example Actor with storage package interactions
 // -----------------------------------------------
 export class MyStorageActor extends Actor<Env> {
+    static nameFromRequest(request: Request) {
+        return "foobar"
+    }
+
+    static configuration(request: Request): ActorConfiguration {
+        return { locationHint: "apac" };
+    }
+
     constructor(ctx?: ActorState, env?: Env) {
         super(ctx, env);
 
