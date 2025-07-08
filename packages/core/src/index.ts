@@ -23,7 +23,7 @@ const DEFAULT_ACTOR_NAME = "default";
  * Base abstract class for Workers that provides common functionality and structure.
  * @template T - The type of the environment object that will be available to the worker
  */
-export abstract class Worker<T> extends WorkerEntrypoint {
+export abstract class Entrypoint<T> extends WorkerEntrypoint {
     protected env!: T;
     protected ctx!: ExecutionContext;
     abstract fetch(request: Request): Promise<Response>;
@@ -214,7 +214,7 @@ export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
     const ObjectClass = input as (new () => any);
 
     // Check if it's a Worker (has a no-arg constructor)
-    if (ObjectClass && ObjectClass.prototype instanceof Worker) {
+    if (ObjectClass && ObjectClass.prototype instanceof Entrypoint) {
         return {
             async fetch(request: Request, env: E, ctx: ExecutionContext): Promise<Response> {
                 const instance = new (ObjectClass as new(ctx: ExecutionContext, env: E) => any)(ctx, env);
