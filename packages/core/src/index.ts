@@ -18,7 +18,7 @@ export type ActorConstructor<T extends Actor<any> = Actor<any>> = new (state: Ac
  * Configuration options for an actor.
  */
 export type ActorConfiguration = {
-    locationHint?: 'wnam' | 'enam' | 'sam' | 'weur' | 'eeur' | 'apac' | 'oc' | 'afr' | 'me';
+    locationHint?: DurableObjectLocationHint;
 }
 
 /**
