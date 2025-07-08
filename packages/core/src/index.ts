@@ -146,8 +146,12 @@ export abstract class Actor<E> extends DurableObject<E> {
     /**
      * Destroy the Actor by removing all actor library specific tables and state
      * that is associated with the actor.
+     * @param _ - Optional configuration object
+     * @param _.trackingInstance - Optional tracking instance name
+     * @param _.forceEviction - When true, forces eviction of the actor from the cache
+     * @throws Will throw an exception when forceEviction is true
      */
-    async destroy(_?: { trackingInstance?: string }) {
+    async destroy(_?: { trackingInstance?: string, forceEviction?: boolean }) {
         // If tracking instance is defined, delete the instance name from the tracking instance map.
         if (_?.trackingInstance && this.identifier) {
             const trackerActor = getActor(this.constructor as ActorConstructor<Actor<E>>, _?.trackingInstance);
@@ -156,12 +160,15 @@ export abstract class Actor<E> extends DurableObject<E> {
             }
         }
 
-        // Delete all alarms
+        // Remove all alarms & delete all the storage
         await this.ctx.storage.deleteAlarm();
         await this.ctx.storage.deleteAll();
 
-        // Enforce eviction of the actor
-        this.ctx.abort("destroyed");
+        if (_?.forceEviction) {
+            // Enforce eviction of the actor. When forceEviction is true, the actor will be destroyed
+            // and the worker will be evicted from the cache. This will throw an exception.
+            this.ctx.abort("destroyed");
+        }
     }
 }
 

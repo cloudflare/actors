@@ -79,14 +79,21 @@ export class MyInstancesNamesWorker extends Entrypoint<Env> {
 // ---------------------------------------------------
 // Example Worker deleting single instance of an Actor
 // ---------------------------------------------------
-export class MyDeleteInstanceWorker extends Entrypoint<Env> {
-    async fetch(request: Request): Promise<Response> {
-        // Deleting a specific instance inside our tracking instance
-        const actor = MyStorageActor.get('foobar');
-        await actor.destroy({ trackingInstance: '_cf_actors' });
-        return new Response('Actor deleted');
-    }
-}
+// export class MyDeleteInstanceWorker extends Entrypoint<Env> {
+//     async fetch(request: Request): Promise<Response> {
+//         // Deleting a specific instance inside our tracking instance
+//         const actor = MyStorageActor.get('foobar');
+        
+//         // Wrap in a try/catch because the `forceEviction` flag of an Actor instance
+//         // will throw an exception which is propogated back through the RPC mechanism
+//         // of our worker.
+//         try {
+//             await actor.destroy({ trackingInstance: '_cf_actors', forceEviction: true });
+//         } catch (e) { }
+
+//         return new Response('Actor deleted');
+//     }
+// }
 // export default handler(MyDeleteInstanceWorker);
 
 
