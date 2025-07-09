@@ -187,12 +187,16 @@ export abstract class Actor<E> extends DurableObject<E> {
      * @param _.forceEviction - When true, forces eviction of the actor from the cache
      * @throws Will throw an exception when forceEviction is true
      */
-    async destroy(_?: { trackingInstance?: string, forceEviction?: boolean }) {
+    async destroy(_?: { forceEviction?: boolean }) {
         // If tracking instance is defined, delete the instance name from the tracking instance map.
-        if (_?.trackingInstance && this.identifier) {
-            const trackerActor = getActor(this.constructor as ActorConstructor<Actor<E>>, _?.trackingInstance);
-            if (trackerActor) {
-                await trackerActor.sql`DELETE FROM actors WHERE identifier = ${this.identifier};`;
+        if (this.identifier) {
+            try {
+                const trackerActor = getActor(this.constructor as ActorConstructor<Actor<E>>, TRACKING_ACTOR_NAME) as unknown as Actor<E>;
+                if (trackerActor) {
+                    await trackerActor.sql`DELETE FROM actors WHERE identifier = ${this.identifier};`;
+                }
+            } catch (e) {
+                console.error(`Failed to delete actor from tracking instance: ${e instanceof Error ? e.message : 'Unknown error'}`);
             }
         }
 
