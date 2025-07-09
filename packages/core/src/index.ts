@@ -20,6 +20,11 @@ export type ActorConstructor<T extends Actor<any> = Actor<any>> = new (state: Ac
 const DEFAULT_ACTOR_NAME = "default";
 
 /**
+ * Provide a default name value for the tracking actor.
+ */
+const TRACKING_ACTOR_NAME = "_cf_actors";
+
+/**
  * Base abstract class for Workers that provides common functionality and structure.
  * @template T - The type of the environment object that will be available to the worker
  */
@@ -144,6 +149,21 @@ export abstract class Actor<E> extends DurableObject<E> {
     }
 
     /**
+     * Tracks the last access time of an actor instance.
+     * @param idString The identifier of the actor instance to track.
+     */
+    async track(idString: string) {
+        if (TRACKING_ACTOR_NAME === idString) {
+            throw new Error(`Cannot track instance with same name as tracking instance, change value to differ from "${TRACKING_ACTOR_NAME}"`);
+        }
+
+        const trackingStub = getActor(this.constructor as ActorConstructor<Actor<E>>, TRACKING_ACTOR_NAME) as unknown as Actor<E>;
+        const currentDateTime = new Date().toISOString();
+        await trackingStub.__studio({ type: 'query', statement: 'CREATE TABLE IF NOT EXISTS actors (identifier TEXT PRIMARY KEY, last_accessed TEXT)' });
+        await trackingStub.__studio({ type: 'query', statement: `INSERT INTO actors (identifier, last_accessed) VALUES (?, ?) ON CONFLICT(identifier) DO UPDATE SET last_accessed = ?`, params: [idString, currentDateTime, currentDateTime] });
+    }
+
+    /**
      * Destroy the Actor by removing all actor library specific tables and state
      * that is associated with the actor.
      */
@@ -183,9 +203,8 @@ type HandlerInput<E> =
 
 type HandlerOptions = {
     track?: {
-        // Table where actor metadata is stored. Defaults to `_cf_actors` and is an independent durable object.
-        trackingInstance?: string;
-        // Note: this will use storage which will prevent your instance from every being fully removed
+        // NOTE: this will use storage which will prevent your instance from every being fully removed unless clearing
+        // the storage layer, or calling `.destroy()` on the actor.
         enabled: boolean;
     }
 };
@@ -233,15 +252,11 @@ export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
 
                     // If tracking is enabled, track the current actor identifier in a separate durable object.
                     if (opts?.track?.enabled) {
-                        const trackingName = opts.track?.trackingInstance ?? '_cf_actors';
-                        if (trackingName === idString) {
-                            return new Response('Cannot access the tracking instance', { status: 404 });
+                        try {
+                            await stub.track(idString);
+                        } catch (error) {
+                            console.error(`Failed to track actor instance: ${error instanceof Error ? error.message : 'Unknown error'}`);
                         }
-
-                        const trackingStub = getActor(ObjectClass as ActorConstructor<Actor<E>>, trackingName) as unknown as Actor<E>;
-                        const currentDateTime = new Date().toISOString();
-                        await trackingStub.__studio({ type: 'query', statement: 'CREATE TABLE IF NOT EXISTS actors (identifier TEXT PRIMARY KEY, last_accessed TEXT)' });
-                        await trackingStub.__studio({ type: 'query', statement: `INSERT INTO actors (identifier, last_accessed) VALUES (?, ?) ON CONFLICT(identifier) DO UPDATE SET last_accessed = ?`, params: [idString, currentDateTime, currentDateTime] });
                     }
 
                     return stub.fetch(request);
