@@ -10,7 +10,8 @@
 				"MyRPCActor",
 				"MyStorageActor",
                 "MyAlarmActor",
-				"MyDurableObject"
+				"MyDurableObject",
+				"MyQueueActor"
 			],
 			"tag": "v1"
 		}
@@ -32,6 +33,10 @@
 			{
 				"class_name": "MyDurableObject",
 				"name": "MyDurableObject"
+			},
+			{
+				"class_name": "MyQueueActor",
+				"name": "MyQueueActor"
 			}
 		]
 	},

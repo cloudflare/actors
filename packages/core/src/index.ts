@@ -1,6 +1,7 @@
 import { env, DurableObject, WorkerEntrypoint } from "cloudflare:workers";
 import { Storage } from "../../storage/src/index";
 import { Alarms } from "../../alarms/src/index";
+import { Queue } from "../../queue/src/index";
 
 /**
  * Alias type for DurableObjectState to match the adopted Actor nomenclature.
@@ -38,6 +39,7 @@ export abstract class Actor<E> extends DurableObject<E> {
     public identifier?: string;
     public storage: Storage;
     public alarms: Alarms<this>;
+    public queue: Queue<this>;
 
     public __studio(_: any) {
         return this.storage.__studio(_);
@@ -86,11 +88,13 @@ export abstract class Actor<E> extends DurableObject<E> {
             super(ctx, env);
             this.storage = new Storage(ctx.storage);
             this.alarms = new Alarms(ctx, this);
+            this.queue = new Queue(ctx, this);
         } else {
             // @ts-ignore - This is handled internally by the framework
             super();
             this.storage = new Storage(undefined);
             this.alarms = new Alarms(undefined, this);
+            this.queue = new Queue(undefined, this);
         }
 
         // Set a default identifier if none exists

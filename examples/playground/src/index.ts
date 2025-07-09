@@ -2,6 +2,7 @@ import { DurableObject } from "cloudflare:workers"
 import { Actor, handler, Entrypoint, ActorState } from '../../../packages/core/src'
 import { Storage } from '../../../packages/storage/src'
 import { Alarms } from "../../../packages/alarms/src";
+import { Queue } from "../../../packages/queue/src";
 
 /**
  * ------------
@@ -171,6 +172,32 @@ export class MyAlarmActor extends Actor<Env> {
 // export default handler(MyAlarmActor);
 
 
+// ---------------------------
+// Example Actor with a queue
+// ---------------------------
+export class MyQueueActor extends Actor<Env> {
+    async fetch(request: Request): Promise<Response> {
+        this.queue.enqueue('operationA', []);
+        this.queue.enqueue('operationB', []);
+        return new Response('Operations queued')
+    }
+
+    public async operationA(payload: any): Promise<number> {
+        // Wait for 5 seconds before returning
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        console.log('Operation A completing')
+        return 1;
+    }
+
+    public async operationB(payload: any): Promise<number> {
+        await new Promise(resolve => setTimeout(resolve, 10000));
+        console.log('Operation B completing')
+        return 2;
+    }
+}
+// export default handler(MyQueueActor);
+
+
 // -----------------------------------------------------------
 // Example Durable Object using the Storage & Alarms classes
 // -----------------------------------------------------------
@@ -179,11 +206,13 @@ export class MyAlarmActor extends Actor<Env> {
 export class MyDurableObject extends DurableObject<Env> {
     storage: Storage;
     alarms: Alarms<this>;
+    queue: Queue<this>;
     
     constructor(ctx: DurableObjectState, env: Env) {
         super(ctx, env)
         this.storage = new Storage(ctx.storage);
         this.alarms = new Alarms(ctx, this);
+        this.queue = new Queue(ctx, this);
     }
 
     async fetch(request: Request): Promise<Response> {
