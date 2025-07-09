@@ -10,7 +10,8 @@
 				"MyRPCActor",
 				"MyStorageActor",
                 "MyAlarmActor",
-				"MyDurableObject"
+				"MyDurableObject",
+				"MyLocationHintActor"
 			],
 			"tag": "v1"
 		}
@@ -32,6 +33,10 @@
 			{
 				"class_name": "MyDurableObject",
 				"name": "MyDurableObject"
+			},
+			{
+				"class_name": "MyLocationHintActor",
+				"name": "MyLocationHintActor"
 			}
 		]
 	},

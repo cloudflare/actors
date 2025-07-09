@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers"
-import { Actor, handler, Entrypoint, ActorState } from '../../../packages/core/src'
+import { Actor, handler, Entrypoint, ActorState, ActorConfiguration } from '../../../packages/core/src'
 import { Storage } from '../../../packages/storage/src'
 import { Alarms } from "../../../packages/alarms/src";
 
@@ -111,10 +111,33 @@ export class MyRPCActor extends Actor<Env> {
 // export default handler(MyRPCActor);
 
 
+// ------------------------------------------
+// Example Actor with location hints enabled
+// ------------------------------------------
+export class MyLocationHintActor extends Actor<Env> {
+    static configuration(request: Request): ActorConfiguration {
+        return { locationHint: "apac" };
+    }
+
+    async fetch(request: Request): Promise<Response> {
+        // Make a request to get the current colo information
+        const response = await fetch("https://cloudflare.com/cdn-cgi/trace");
+        const colos = await response.text();
+
+        return new Response(colos);
+    }
+}
+// export default handler(MyLocationHintActor);
+
+
 // -----------------------------------------------
 // Example Actor with storage package interactions
 // -----------------------------------------------
 export class MyStorageActor extends Actor<Env> {
+    static nameFromRequest(request: Request) {
+        return "foobar"
+    }
+
     constructor(ctx?: ActorState, env?: Env) {
         super(ctx, env);
 
