@@ -13,6 +13,7 @@ export type QueueItem<T = string> = {
 export class Queue<P extends DurableObject<any>> {
     private parent: P;
     public storage: DurableObjectStorage | undefined;
+    private isProcessing: boolean = false;
 
     constructor(ctx: DurableObjectState | undefined, parent: P) {
         this.storage = ctx?.storage;
@@ -25,70 +26,88 @@ export class Queue<P extends DurableObject<any>> {
      * @param callback Name of the method to call
      * @returns The ID of the queued task
      */
-    async queue<T = unknown>(callback: keyof this, payload: T): Promise<string> {
+    async enqueue<T = unknown>(callback: keyof P, payload: T): Promise<string> {
       const id = nanoid(9);
       if (typeof callback !== "string") {
         throw new Error("Callback must be a string");
       }
 
-      if (typeof this[callback] !== "function") {
+      if (typeof this.parent[callback] !== "function") {
         throw new Error(`this.${callback} is not a function`);
       }
 
       this.sql`
-        INSERT OR REPLACE INTO _actor_queues (id, payload, callback)
-        VALUES (${id}, ${JSON.stringify(payload)}, ${callback})
+        CREATE TABLE IF NOT EXISTS _actor_queues (id TEXT PRIMARY KEY, payload TEXT, callback TEXT, created_at INTEGER)
       `;
 
-      void this._flushQueue().catch((e) => {
-        console.error("Error flushing queue:", e);
-      });
+      this.sql`
+        INSERT OR REPLACE INTO _actor_queues (id, payload, callback, created_at)
+        VALUES (${id}, ${JSON.stringify(payload)}, ${callback}, ${Date.now()})
+      `;
+
+      // Only start a new flush if one isn't already running
+      if (!this.isProcessing) {
+        void this._flushQueue().catch((e) => {
+          console.error("Error flushing queue:", e);
+        });
+      }
 
       return id;
     }
 
     private async _flushQueue() {
-      while (true) {
-        const result = this.sql<QueueItem<string>>`
-        SELECT * FROM _actor_queues
-        ORDER BY created_at ASC
-        LIMIT 1
-      `;
+      // If already processing, don't start another processing cycle
+      if (this.isProcessing) {
+        return;
+      }
+      
+      this.isProcessing = true;
+      
+      try {
+        while (true) {
+          const result = this.sql<QueueItem<string>>`
+            SELECT * FROM _actor_queues
+            ORDER BY created_at ASC
+            LIMIT 1
+          `;
 
-        if (!result) {
-          break;
-        }
+          if (!result || result.length === 0) {
+            break;
+          }
 
-        for (const row of result || []) {
-          const callback = this.parent[row.callback as keyof P];
-          if (!callback) {
-            console.error(`callback ${row.callback} not found`);
-            continue;
-          }
-          // const { connection, request } = agentContext.getStore() || {};
-          // await agentContext.run(
-          //   { agent: this, connection: connection, request: request },
-          //   async () => {
-          //     // TODO: add retries and backoff
-          //     await (
-          //       callback as (
-          //         payload: unknown,
-          //         queueItem: QueueItem<string>
-          //       ) => Promise<void>
-          //     ).bind(this)(JSON.parse(row.payload as string), row);
-          //   }
-          // );
-          try {
-            await (
-              callback as (
-                payload: unknown,
-                queueItem: QueueItem<string>
-              ) => Promise<void>
-            ).bind(this.parent)(JSON.parse(row.payload as string), row);
-          } catch (e) {
-            console.error(`error executing callback "${row.callback}"`, e);
+          for (const row of result) {
+            const callback = this.parent[row.callback as keyof P];
+            if (!callback) {
+              console.error(`callback ${row.callback} not found`);
+              // Remove invalid callbacks from the queue
+              await this.dequeue(row.id);
+              continue;
+            }
+            
+            // TODO: Add retries and backoff
+            try {
+              await (
+                callback as (
+                  payload: unknown,
+                  queueItem: QueueItem<string>
+                ) => Promise<void>
+              ).bind(this.parent)(JSON.parse(row.payload as string), row);
+              
+              // Dequeue the task after successful execution
+              await this.dequeue(row.id);
+            } catch (e) {
+              console.error(`error executing callback "${row.callback}"`, e);
+              // Optionally: You could implement retry logic here instead of removing failed tasks
+              // For now, we'll remove failed tasks to prevent infinite retry loops
+              await this.dequeue(row.id);
+            }
           }
         }
+      } catch (error) {
+        console.error("Error in queue processing:", error);
+      } finally {
+        // Reset the processing flag when done
+        this.isProcessing = false;
       }
     }
 
