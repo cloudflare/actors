@@ -111,16 +111,31 @@ export class MyRPCActor extends Actor<Env> {
 // export default handler(MyRPCActor);
 
 
+// ------------------------------------------
+// Example Actor with location hints enabled
+// ------------------------------------------
+export class MyLocationHintActor extends Actor<Env> {
+    static configuration(request: Request): ActorConfiguration {
+        return { locationHint: "apac" };
+    }
+
+    async fetch(request: Request): Promise<Response> {
+        // Make a request to get the current colo information
+        const response = await fetch("https://cloudflare.com/cdn-cgi/trace");
+        const colos = await response.text();
+
+        return new Response(colos);
+    }
+}
+// export default handler(MyLocationHintActor);
+
+
 // -----------------------------------------------
 // Example Actor with storage package interactions
 // -----------------------------------------------
 export class MyStorageActor extends Actor<Env> {
     static nameFromRequest(request: Request) {
         return "foobar"
-    }
-
-    static configuration(request: Request): ActorConfiguration {
-        return { locationHint: "apac" };
     }
 
     constructor(ctx?: ActorState, env?: Env) {
