@@ -1,13 +1,14 @@
 # Cloudflare Actors
 
-***This project is in active development.***
+**_This project is in active development._**
 
-We are working on building a full-featured framework for building Cloudflare Workers and Durable Objects by introducing new patterns and out of the box helper functionality. 
+We are working on building a full-featured framework for building Cloudflare Durable Objects by introducing new patterns and out of the box helper functionality.
 
 ## Table of Contents
 
 - [Getting Started](#getting-started)
 - [Examples](#examples)
+- [FAQ](#faq)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -21,144 +22,70 @@ We are working on building a full-featured framework for building Cloudflare Wor
 ### Installation
 
 ```bash
-npm install
-```
-
-### Running the Examples
-
-The examples are located in the `examples` directory. You can run them using the following command:
-
-```bash
-npm run dev
+npm i @cloudflare/actors
 ```
 
 ## Examples
 
-### Actor
+- [Basic Example](#basic-example)
+- [Request Handler](#request-handler)
+- [Persist Properties](#persist-properties)
+- [RPC](#rpc)
+- [Instances Names](#instances-names)
+- [Track Instances](#track-instances)
+- [Delete Instance](#delete-instance)
+- [Location Hints](#location-hints)
+- [Access Identifiers](#access-identifiers)
+- [Storage Helpers](#storage-helpers)
+- [Alarm Helpers](#alarm-helpers)
+- [How to use in a Durable Object](#how-to-use-in-a-durable-object)
 
-```typescript
-export class MyActor extends Actor<Env> {
-    async fetch(request: Request): Promise<Response> {
-        return new Response('Hello, World!')
-    }
-}
+## FAQ
 
-export default handler(MyActor);
-```
+### General
 
-### Actor with Custom Name
+<details>
+  <summary>How long does a single request keep my Actor alive for?</summary>
+  A single request will keep the Actor alive for ~10 seconds.
+</details>
 
-```typescript
-export class MyActor extends Actor<Env> {
-    static nameFromRequest(request: Request): string {
-        return 'user-123'
-    }
+<details>
+  <summary>Can I keep my Actor alive longer?</summary>
+  Using `setTimeout` in your code can keep it alive for up to ~60 seconds.
+</details>
 
-    async fetch(request: Request): Promise<Response> {
-        return new Response('Hello, World!')
-    }
-}
+<details>
+  <summary>Are there other ways to keep my code alive longer?</summary>
+  Yes, you can use alarms to keep the Actor alive longer.
+</details>
 
-export default handler(MyActor);
-```
+<details>
+  <summary>Does every new request reset the time until the Actor is no longer in memory?</summary>
+  Yes.
+</details>
 
-### Actor with Storage
+### Location Placement
 
-```typescript
-export class MyStorageActor extends Actor<Env> {
-    constructor(ctx?: ActorState, env?: Env) {
-        super(ctx, env);
+<details>
+  <summary>How do I control the location of my Actor?</summary>
+  You can use location hints to control the location of your Actor.
+</details>
 
-        // Set migrations for the SQLite database
-        this.storage.migrations = [{
-            idMonotonicInc: 1,
-            description: "First migration",
-            sql: "CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY)"
-        }, {
-            idMonotonicInc: 2,
-            description: "Second migration",
-            sql: "CREATE TABLE IF NOT EXISTS test2 (id INTEGER PRIMARY KEY)"
-        }];
-    }
+<details>
+  <summary>Where does my Actor live if I do not specify a location hint?</summary>
+  If you do not specify a location hint, your Actor will be placed in the region closest to the user.
+</details>
 
-    async fetch(request: Request): Promise<Response> {
-        // Run migrations before executing our query
-        await this.storage.runMigrations();
+<details>
+  <summary>Can you change the location or region of your Actor?</summary>
+  No, you cannot change the location or region of your Actor. Once it has been instantiated it will always live in that region. If you want to move your Actor to a different region, you will need to deploy a new version of your code.
+</details>
 
-        // Now we can proceed with querying
-        const query = this.sql`SELECT * FROM sqlite_master LIMIT 10;`
-        return new Response(`${JSON.stringify(query)}`)
-    }
-}
-
-export default handler(MyStorageActor);
-```
-
-### Actor with Alarms
-
-```typescript
-export class MyAlarmActor extends Actor<Env> {
-    async fetch(request: Request): Promise<Response> {
-        // Schedule an alarm to trigger in 10 seconds adding two values and a description
-        this.alarms.schedule(10, 'addFromAlarm', [1, 2, 'Adding 1 + 2']);
-        return new Response('Alarm set')
-    }
-
-    // Called from our alarm defined above
-    public async addFromAlarm(a: number, b: number, desc: string): Promise<number> {
-        console.log(`Alarm triggered, you can view this alarm in your Worker logs: ${a} + ${b} (desc: ${desc})`);
-        return a + b;
-    }
-}
-
-export default handler(MyAlarmActor);
-```
-
-### Storage & Alarms with DurableObject Class
-
-```typescript
-export class MyDurableObject extends DurableObject<Env> {
-    storage: Storage;
-    alarms: Alarms<this>;
-    
-    constructor(ctx: DurableObjectState, env: Env) {
-        super(ctx, env)
-        this.storage = new Storage(ctx.storage);
-        this.alarms = new Alarms(ctx, this);
-    }
-
-    async fetch(request: Request): Promise<Response> {
-        this.alarms.schedule(10, "addFromAlarm", [1, 2]);
-        const query = this.storage.sql`SELECT 10;`
-        return new Response(`Query Result: ${JSON.stringify(query)}`);
-    }
-
-    // This method is required to handle alarms
-    alarm(alarmInfo?: any): void | Promise<void> {
-        // Forward the alarm to the alarms handler
-        if (this.alarms) {
-            return this.alarms.alarm(alarmInfo);
-        }
-        return;
-    }
-
-    // Called from our alarm defined above
-    public async addFromAlarm(a: number, b: number): Promise<number> {
-        console.log(`Alarm triggered, you can view this alarm in your Worker logs: ${a} + ${b}`);
-        return a + b;
-    }
-}
-
-export default {
-    async fetch(request: Request, env: Env, ctx: ExecutionContext) {
-        const id = env.MyDurableObject.idFromName(new URL(request.url).pathname);
-        const stub = env.MyDurableObject.get(id);
-        const response = await stub.fetch(request);
-
-        return response;
-    },
-};
-```
+<details>
+  <summary>With a location hint where will my Actor be placed?</summary>
+  With a location hint, your Actor will be placed in the region you specified. The instance will be spawned somewhere randomly within the location region
+  you provide. For example if you provide the `enam` location hint, the instance will be spawned somewhere randomly within the Eastern North America region.
+</details>
 
 ## Contributing
 
