@@ -2,27 +2,65 @@
 
 **_This project is in active development._**
 
-We are working on building a full-featured framework for building Cloudflare Durable Objects by introducing new patterns and out of the box helper functionality.
+We are building a full-featured framework that makes developing Cloudflare Durable Objects easier by introducing new patterns and out of the box functionality that help developers.
 
-## Table of Contents
+## Features
 
-- [Getting Started](#getting-started)
-- [Examples](#examples)
-- [FAQ](#faq)
-- [Contributing](#contributing)
-- [License](#license)
+- [Request Handler](https://github.com) to easily define entrypoints to your Actor, Worker, or Request
+- [Persistent Properties](https://github.com) that store property values between requests and evictions
+- [RPC](https://github.com) into other Actors with a simple `MyActor.get('id')` interface
+- [Instances Names](https://github.com) define the unique identifier of your Actor from within the class definition
+- [Track Instances](https://github.com) track and access all instances that have been created
+- [Delete Instance](https://github.com) delete existing individual instances
+- [Location Hints](https://github.com) allow you to control the location of your Actor
+- [Access Identifiers](https://github.com) grants access to the unique identifier of your Actor with `this.identifier`
+- [Storage Helpers](https://github.com) to easily interact with the storage such as SQL migrations
+- [Alarm Helpers](https://github.com) that allow you to set multiple alarms
+- [Queue Helpers](https://github.com) for enqueing functions to run sequentially
 
 ## Getting Started
 
-### Prerequisites
-
-- [Node.js](https://nodejs.org/en/download/) (>=18.0.0)
-- [Wrangler](https://developers.cloudflare.com/workers/wrangler) (>=4.16.0)
-
-### Installation
+### Step 1: Install the package
 
 ```bash
 npm i @cloudflare/actors
+```
+
+### Step 2: Update your Wrangler Configuration
+
+Notice the code class name in your Typescript implementation must match the binding `name`, `class_name` and `new_sqlite_classes` value in the configuration. Verify all of the values match.
+
+```jsonc
+{
+  "migrations": [
+    {
+      "new_sqlite_classes": ["MyActor"],
+      "tag": "v1"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "class_name": "MyActor",
+        "name": "MyActor"
+      }
+    ]
+  }
+}
+```
+
+### Step 3: Create your class implementation:
+
+```typescript
+import { Actor, handler } from "@cloudflare/actors";
+
+export class MyActor extends Actor<Env> {
+  async fetch(request: Request): Promise<Response> {
+    return new Response("Hello, World!");
+  }
+}
+
+export default handler(MyActor);
 ```
 
 ## Examples
@@ -45,6 +83,11 @@ npm i @cloudflare/actors
 ### General
 
 <details>
+  <summary>What is an Actor?</summary>
+  An Actor is a Durable Object that is stateful and has access to both compute and storage. You can think of it as a small server instance that is active when being accessed and asleep when not.
+</details>
+
+<details>
   <summary>How long does a single request keep my Actor alive for?</summary>
   A single request will keep the Actor alive for ~10 seconds.
 </details>
@@ -63,6 +106,8 @@ npm i @cloudflare/actors
   <summary>Does every new request reset the time until the Actor is no longer in memory?</summary>
   Yes.
 </details>
+
+---
 
 ### Location Placement
 
@@ -87,15 +132,15 @@ npm i @cloudflare/actors
   you provide. For example if you provide the `enam` location hint, the instance will be spawned somewhere randomly within the Eastern North America region.
 </details>
 
+<details>
+  <summary>What happens if the data center where my Actor is located goes down?</summary>
+  If the data center where your Actor is located goes down, your Actor will be moved to another data center.
+</details>
+
 ## Contributing
 
-We welcome contributions! Whether it's:
-
-- New examples
-- Documentation improvements
-- Bug fixes
-- Feature suggestions
+We welcome contributions! Please refer to our [Contributing Guidelines](./CONTRIBUTING.md) for more information.
 
 ## License
 
-[MIT](LICENSE)
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
