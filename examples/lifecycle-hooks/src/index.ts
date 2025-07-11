@@ -5,17 +5,17 @@ export class MyActor extends Actor<Env> {
         return new Response(`Hello, World!`);
     }
 
-    protected onInit(): Promise<void> {
+    protected override onInit(): Promise<void> {
         console.log('Actor is initialized');
         return Promise.resolve();
     }
 
-    protected onDestroy(): Promise<void> {
+    protected override onDestroy(): Promise<void> {
         console.log('Actor is being destroyed');
         return Promise.resolve();
     }
 
-    protected onAlarm(alarmInfo?: AlarmInvocationInfo): Promise<void> {
+    protected override onAlarm(alarmInfo?: AlarmInvocationInfo): Promise<void> {
         console.log('Actor is notified of an alarm');
         return Promise.resolve();
     }
