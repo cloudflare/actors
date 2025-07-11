@@ -16,6 +16,7 @@ We are building a full-featured framework that makes developing Cloudflare Durab
 - [Access Identifiers](https://github.com) grants access to the unique identifier of your Actor with `this.identifier`
 - [Storage Helpers](https://github.com) to easily interact with the storage such as SQL migrations
 - [Alarm Helpers](https://github.com) that allow you to set multiple alarms
+- [Socket Helpers](https://github.com) makes handling websocket connections easier
 - [Queue Helpers](https://github.com) for enqueing functions to run sequentially
 
 ## Getting Started
@@ -65,10 +66,10 @@ export default handler(MyActor);
 
 ## Examples
 
-- [Basic Example](#basic-example)
-- [Request Handler](#request-handler)
+- [Basic Example](./examples/basic)
+- [Request Handler](./examples/handler)
+- [RPC](./examples/rpc)
 - [Persist Properties](#persist-properties)
-- [RPC](#rpc)
 - [Instances Names](#instances-names)
 - [Track Instances](#track-instances)
 - [Delete Instance](#delete-instance)
@@ -136,6 +137,12 @@ export default handler(MyActor);
   <summary>What happens if the data center where my Actor is located goes down?</summary>
   If the data center where your Actor is located goes down, your Actor will be moved to another data center.
 </details>
+
+---
+
+See [FAQ.md](./FAQ.md) for more answers to common questions.
+
+---
 
 ## Contributing
 
