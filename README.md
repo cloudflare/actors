@@ -7,17 +7,15 @@ We are building a full-featured framework that makes developing Cloudflare Durab
 ## Features
 
 - [Request Handler](https://github.com) to easily define entrypoints to your Actor, Worker, or Request
+- [Lifecycle Methods](https://github.com) enable you to tap into important lifecycle events
 - [Persistent Properties](https://github.com) that store property values between requests and evictions
-- [RPC](https://github.com) into other Actors with a simple `MyActor.get('id')` interface
-- [Instances Names](https://github.com) define the unique identifier of your Actor from within the class definition
-- [Track Instances](https://github.com) track and access all instances that have been created
-- [Delete Instance](https://github.com) delete existing individual instances
-- [Location Hints](https://github.com) allow you to control the location of your Actor
-- [Access Identifiers](https://github.com) grants access to the unique identifier of your Actor with `this.identifier`
-- [Storage Helpers](https://github.com) to easily interact with the storage such as SQL migrations
-- [Alarm Helpers](https://github.com) that allow you to set multiple alarms
-- [Socket Helpers](https://github.com) makes handling websocket connections easier
-- [Queue Helpers](https://github.com) for enqueing functions to run sequentially
+- [RPC Interface](https://github.com) into other Actors with a simple `MyActor.get('id')` interface
+- [Managing Instances](https://github.com) track, delete, and access all instances that have been created
+- [Location Placement](https://github.com) allow you to control the location of your Actor
+- [SQL Migrations](https://github.com) to apply migrations to the SQLite storage
+- [Multiple Alarms](https://github.com) set any number of alarms by timestamp, delay, or cron
+
+And many more features, check out the [Examples](./examples) for more information.
 
 ## Getting Started
 
@@ -68,16 +66,10 @@ export default handler(MyActor);
 
 - [Basic Example](./examples/basic)
 - [Request Handler](./examples/handler)
-- [RPC](./examples/rpc)
-- [Persist Properties](#persist-properties)
-- [Instances Names](#instances-names)
-- [Track Instances](#track-instances)
-- [Delete Instance](#delete-instance)
-- [Location Hints](#location-hints)
-- [Access Identifiers](#access-identifiers)
-- [Storage Helpers](#storage-helpers)
-- [Alarm Helpers](#alarm-helpers)
-- [How to use in a Durable Object](#how-to-use-in-a-durable-object)
+- [RPC Interface](./examples/rpc)
+- [Managing Instances](./examples/manage-instances)
+- [Location Placement](./examples/location-placement)
+- [How to use without Actor class](./examples/durable-objects/)
 
 ## FAQ
 
@@ -140,7 +132,7 @@ export default handler(MyActor);
 
 ---
 
-See [FAQ.md](./FAQ.md) for more answers to common questions.
+See [FAQ](./FAQ.md) for more answers to common questions.
 
 ---
 
