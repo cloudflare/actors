@@ -118,6 +118,9 @@ export abstract class Actor<E> extends DurableObject<E> {
         if (!this.identifier) {
             this.identifier = DEFAULT_ACTOR_NAME;
         }
+
+        // Call user defined onInit method
+        this.onInit();
     }
 
     /**
@@ -127,6 +130,31 @@ export abstract class Actor<E> extends DurableObject<E> {
      */
     async fetch(request: Request): Promise<Response> {
         throw new Error('fetch() must be implemented in derived class');
+    }
+
+    /**
+     * Lifecycle method that is called when the actor is initialized.
+     * @protected
+     */
+    protected async onInit() {
+        // Default implementation is a no-op
+    }
+
+    /**
+     * Lifecycle method that is called when the actor is destroyed.
+     * @protected
+     */
+    protected async onDestroy() {
+        // Default implementation is a no-op
+    }
+
+    /**
+     * Lifecycle method that is called when the actor is notified of an alarm.
+     * @protected
+     * @param alarmInfo - Information about the alarm that was triggered
+     */
+    protected async onAlarm(alarmInfo?: AlarmInvocationInfo) {
+        // Default implementation is a no-op
     }
 
     /**
@@ -156,7 +184,10 @@ export abstract class Actor<E> extends DurableObject<E> {
         }
     }
 
-    alarm(alarmInfo?: AlarmInvocationInfo): void | Promise<void> {
+    async alarm(alarmInfo?: AlarmInvocationInfo): Promise<void> {
+        // Call user defined onAlarm method before proceeding
+        await this.onAlarm(alarmInfo);
+
         if (this.alarms) {
             return this.alarms.alarm(alarmInfo);
         }
@@ -188,6 +219,9 @@ export abstract class Actor<E> extends DurableObject<E> {
      * @throws Will throw an exception when forceEviction is true
      */
     async destroy(_?: { forceEviction?: boolean }) {
+        // Call user defined onDestroy method before proceeding
+        await this.onDestroy();
+
         // If tracking instance is defined, delete the instance name from the tracking instance map.
         if (this.identifier) {
             try {

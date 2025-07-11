@@ -6,12 +6,12 @@ We are building a full-featured framework that makes developing Cloudflare Durab
 
 ## Features
 
-- [Request Handler](https://github.com) to easily define entrypoints to your Actor, Worker, or Request
-- [Lifecycle Methods](https://github.com) enable you to tap into important lifecycle events
+- [Request Handler](./examples/handler/) to easily define entrypoints to your Actor, Worker, or Request
+- [Lifecycle Methods](./examples/lifecycle-hooks/) enable you to tap into important lifecycle events
 - [Persistent Properties](https://github.com) that store property values between requests and evictions
-- [RPC Interface](https://github.com) into other Actors with a simple `MyActor.get('id')` interface
-- [Managing Instances](https://github.com) track, delete, and access all instances that have been created
-- [Location Placement](https://github.com) allow you to control the location of your Actor
+- [RPC Interface](./examples/rpc/) into other Actors with a simple `MyActor.get('id')` interface
+- [Managing Instances](./examples/manage-instances/) track, delete, and access all instances that have been created
+- [Location Placement](./examples/location-placement/) allow you to control the location of your Actor
 - [SQL Migrations](https://github.com) to apply migrations to the SQLite storage
 - [Multiple Alarms](https://github.com) set any number of alarms by timestamp, delay, or cron
 
@@ -68,6 +68,7 @@ export default handler(MyActor);
 - [Request Handler](./examples/handler)
 - [RPC Interface](./examples/rpc)
 - [Managing Instances](./examples/manage-instances)
+- [Lifecycle Hooks](./examples/lifecycle-hooks)
 - [Location Placement](./examples/location-placement)
 - [How to use without Actor class](./examples/durable-objects/)
 
