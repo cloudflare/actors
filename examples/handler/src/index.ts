@@ -1,9 +1,9 @@
-import { Actor, Entrypoint, handler } from '../../../packages/core/src'
+import { Actor, ActorConfiguration, Entrypoint, handler } from '../../../packages/core/src'
 
 // -----------------------------------------------------
 // Example response without explicitly defining a Worker
 // -----------------------------------------------------
-export default handler((request: Request) => {
+export default handler(async (request: Request) => {
     return new Response('Hello, World!')
 });
 
