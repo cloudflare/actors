@@ -1,6 +1,7 @@
 import { env, DurableObject, WorkerEntrypoint } from "cloudflare:workers";
 import { Storage } from "../../storage/src/index";
 import { Alarms } from "../../alarms/src/index";
+import { BrowsableHandler, createHomepageInterface } from "./studio";
 
 /**
  * Alias type for DurableObjectState to match the adopted Actor nomenclature.
@@ -12,13 +13,22 @@ export type ActorState = DurableObjectState;
  * Type definition for a constructor of an actor.
  * @template T - The type of the actor
  */
-export type ActorConstructor<T extends Actor<any> = Actor<any>> = new (state: ActorState, env: any) => T;
+export type ActorConstructor<T extends Actor<any> = Actor<any>> = {
+    new (state: ActorState, env: any): T;
+    configuration?(request: Request): ActorConfiguration;
+    nameFromRequest?(request: Request): string;
+};
+
 
 /**
  * Configuration options for an actor.
  */
 export type ActorConfiguration = {
     locationHint?: DurableObjectLocationHint;
+    studio?: {
+        password?: string;
+        enabled: boolean;
+    };
 }
 
 /**
@@ -50,9 +60,14 @@ export abstract class Actor<E> extends DurableObject<E> {
     public identifier?: string;
     public storage: Storage;
     public alarms: Alarms<this>;
+    public browsable: BrowsableHandler;
 
     public __studio(_: any) {
         return this.storage.__studio(_);
+    }
+
+    public fetchBrowsable(request: Request): Promise<Response> {
+        return this.browsable.fetch(request)
     }
 
     /**
@@ -107,11 +122,13 @@ export abstract class Actor<E> extends DurableObject<E> {
             super(ctx, env);
             this.storage = new Storage(ctx.storage);
             this.alarms = new Alarms(ctx, this);
+            this.browsable = new BrowsableHandler(ctx.storage.sql);
         } else {
             // @ts-ignore - This is handled internally by the framework
             super();
             this.storage = new Storage(undefined);
             this.alarms = new Alarms(undefined, this);
+            this.browsable = new BrowsableHandler(undefined);
         }
 
         // Set a default identifier if none exists
@@ -233,6 +250,19 @@ type HandlerOptions = {
         // NOTE: this will use storage which will prevent your instance from every being fully removed unless clearing
         // the storage layer, or calling `.destroy()` on the actor.
         enabled: boolean;
+    },
+    /**
+     * Registry to map actor class names to their constructors
+     * This allows users to specify which actor classes can be instantiated by name
+     * Example: { 'MyActor': MyActorClass, 'AnotherActor': AnotherActorClass }
+     */
+    registry?: Record<string, ActorConstructor<Actor<any>>>,
+    /**
+     * Enables the studio interface with an optional custom path.
+     */
+    studio?: {
+        enabled: boolean,
+        path: string
     }
 };
 
@@ -245,10 +275,66 @@ type HandlerOptions = {
  * @returns An ExportedHandler that can be used as a Worker
  */
 export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
+    // Create a common function to check for /studio path
+    const handleStudioPath = async (request: Request, env: E): Promise<Promise<Response> | null> => {
+        // If studio is not enabled, return early
+        if (!opts?.studio?.enabled) {
+            return null;
+        }
+
+        const url = new URL(request.url);
+        const studioPath = opts?.studio?.path || '/studio';
+
+        if (url.pathname === studioPath) {
+            let actorClassName, instanceName, password;
+
+            if (request.method === 'GET') {
+                actorClassName = url.searchParams.get('class');
+                instanceName = url.searchParams.get('instance');
+                password = url.searchParams.get('password');
+            } else if (request.method === 'POST') {
+                const clonedRequest = request.clone();
+                const body = await clonedRequest.json();
+                actorClassName = (body as { class?: string }).class;
+                instanceName = (body as { instance?: string }).instance;
+                password = (body as { password?: string }).password;
+            }
+
+            if ((!actorClassName || !instanceName || !password)) {
+                return new Response(createHomepageInterface(), { headers: { 'Content-Type': 'text/html' } });
+            }
+
+            const ActorClass = opts?.registry?.[actorClassName];
+
+            if (!ActorClass) {
+                return new Response('Actor class not found', { status: 404 });
+            }
+
+            const actor = getActor(ActorClass, instanceName) as unknown as Actor<E>;
+            const browsableResponse = await actor.fetchBrowsable(request);
+            const config = ActorClass.configuration ? ActorClass.configuration(request) : {};
+            const studioEnabled = config.studio?.enabled ?? false;
+
+            if (!studioEnabled || config.studio?.password !== password) {
+                return null;
+            }
+
+            if (browsableResponse.status !== 404) {
+                return browsableResponse;
+            }
+        }
+
+        return null;
+    }
+
     // If input is a plain function (not a class), wrap it in a simple handler
     if (typeof input === 'function' && !input.prototype) {
         return {
             async fetch(request: Request, env: E, ctx: ExecutionContext): Promise<Response> {
+                // Check for /studio path first
+                const studioResponse = await handleStudioPath(request, env);
+                if (studioResponse) return studioResponse;
+
                 const handler = input as RequestHandler<E>;
                 const result = await handler(request, env, ctx);
                 return result;
@@ -263,6 +349,10 @@ export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
     if (ObjectClass && ObjectClass.prototype instanceof Entrypoint) {
         return {
             async fetch(request: Request, env: E, ctx: ExecutionContext): Promise<Response> {
+                // Check for /studio path first
+                const studioResponse = await handleStudioPath(request, env);
+                if (studioResponse) return studioResponse;
+
                 const instance = new (ObjectClass as new(ctx: ExecutionContext, env: E) => any)(ctx, env);
                 return instance.fetch(request);
             }
@@ -273,6 +363,10 @@ export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
     if (ObjectClass.prototype instanceof Actor) {
         const worker = {
             async fetch(request: Request, env: E, ctx: ExecutionContext): Promise<Response> {
+                // Check for /__studio path first
+                const studioResponse = await handleStudioPath(request, env);
+                if (studioResponse) return studioResponse;
+
                 try {
                     const idString = (ObjectClass as any).nameFromRequest(request);
                     const stub = getActor(ObjectClass as ActorConstructor<Actor<E>>, idString);
