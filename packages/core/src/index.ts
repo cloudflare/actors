@@ -262,7 +262,7 @@ type HandlerOptions = {
      */
     studio?: {
         enabled: boolean,
-        path: string
+        path?: string
     }
 };
 
@@ -276,7 +276,7 @@ type HandlerOptions = {
  */
 export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
     // Create a common function to check for /studio path
-    const handleStudioPath = async (request: Request, env: E): Promise<Promise<Response> | null> => {
+    const handleStudioPath = async (request: Request): Promise<Promise<Response> | null> => {
         // If studio is not enabled, return early
         if (!opts?.studio?.enabled) {
             return null;
@@ -307,7 +307,7 @@ export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
             const ActorClass = opts?.registry?.[actorClassName];
 
             if (!ActorClass) {
-                return new Response('Actor class not found', { status: 404 });
+                return null;
             }
 
             const actor = getActor(ActorClass, instanceName) as unknown as Actor<E>;
@@ -332,7 +332,7 @@ export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
         return {
             async fetch(request: Request, env: E, ctx: ExecutionContext): Promise<Response> {
                 // Check for /studio path first
-                const studioResponse = await handleStudioPath(request, env);
+                const studioResponse = await handleStudioPath(request);
                 if (studioResponse) return studioResponse;
 
                 const handler = input as RequestHandler<E>;
@@ -350,7 +350,7 @@ export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
         return {
             async fetch(request: Request, env: E, ctx: ExecutionContext): Promise<Response> {
                 // Check for /studio path first
-                const studioResponse = await handleStudioPath(request, env);
+                const studioResponse = await handleStudioPath(request);
                 if (studioResponse) return studioResponse;
 
                 const instance = new (ObjectClass as new(ctx: ExecutionContext, env: E) => any)(ctx, env);
@@ -363,8 +363,8 @@ export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
     if (ObjectClass.prototype instanceof Actor) {
         const worker = {
             async fetch(request: Request, env: E, ctx: ExecutionContext): Promise<Response> {
-                // Check for /__studio path first
-                const studioResponse = await handleStudioPath(request, env);
+                // Check for /studio path first
+                const studioResponse = await handleStudioPath(request);
                 if (studioResponse) return studioResponse;
 
                 try {
