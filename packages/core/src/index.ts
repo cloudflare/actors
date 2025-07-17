@@ -1,6 +1,9 @@
 import { env, DurableObject, WorkerEntrypoint } from "cloudflare:workers";
 import { Storage } from "../../storage/src/index";
 import { Alarms } from "../../alarms/src/index";
+import { Persist, PERSISTED_PROPERTIES, PERSISTED_VALUES, initializePersistedProperties, persistProperty } from "./persist";
+
+export { Persist };
 
 /**
  * Alias type for DurableObjectState to match the adopted Actor nomenclature.
@@ -54,6 +57,16 @@ export abstract class Actor<E> extends DurableObject<E> {
     public __studio(_: any) {
         return this.storage.__studio(_);
     }
+    
+    /**
+     * Hook that is called whenever a @Persist decorated property is stored in the database.
+     * Override this method to listen to persistence events.
+     * @param key The property key that was persisted
+     * @param value The value that was persisted
+     */
+    protected onPersist(key: string, value: any) {
+        // Default implementation is a no-op
+    }
 
     /**
      * Set the identifier for the actor as named by the client
@@ -105,13 +118,30 @@ export abstract class Actor<E> extends DurableObject<E> {
     constructor(ctx?: ActorState, env?: E) {
         if (ctx && env) {
             super(ctx, env);
+            
             this.storage = new Storage(ctx.storage);
             this.alarms = new Alarms(ctx, this);
+            
+            // Initialize the persisted values map
+            (this as any)[PERSISTED_VALUES] = new Map<string, any>();
+            
+            // Move all initialization into blockConcurrencyWhile to ensure
+            // persisted properties are loaded before any code runs
+            ctx.blockConcurrencyWhile(async () => {
+                // Load persisted properties
+                await this._initializePersistedProperties();
+                
+                // Call the initialize method after persisted properties are loaded
+                await this.init();
+            });
         } else {
             // @ts-ignore - This is handled internally by the framework
             super();
             this.storage = new Storage(undefined);
             this.alarms = new Alarms(undefined, this);
+            
+            // Initialize the persisted values map
+            (this as any)[PERSISTED_VALUES] = new Map<string, any>();
         }
 
         // Set a default identifier if none exists
@@ -121,6 +151,34 @@ export abstract class Actor<E> extends DurableObject<E> {
 
         // Call user defined onInit method
         this.onInit();
+    }
+
+    /**
+     * Initialize method that will be called after persisted properties are loaded.
+     * Subclasses should override this method for initialization code that needs
+     * access to persisted properties.
+     */
+    protected async init(): Promise<void> {
+        // Base implementation does nothing
+    }
+    
+    /**
+     * Initializes the persisted properties table and loads any stored values.
+     * This is called during construction to ensure properties are loaded before any code uses them.
+     * @private
+     */
+    private async _initializePersistedProperties(): Promise<void> {
+        await initializePersistedProperties(this);
+    }
+    
+    /**
+     * Persists a property value to the Durable Object storage.
+     * @param propertyKey The name of the property to persist
+     * @param value The value to persist
+     * @private
+     */
+    private async _persistProperty(propertyKey: string, value: any): Promise<void> {
+        await persistProperty(this, propertyKey, value);
     }
 
     /**
