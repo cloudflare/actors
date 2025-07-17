@@ -132,7 +132,7 @@ export abstract class Actor<E> extends DurableObject<E> {
                 await this._initializePersistedProperties();
                 
                 // Call the initialize method after persisted properties are loaded
-                await this.init();
+                await this.onInit();
             });
         } else {
             // @ts-ignore - This is handled internally by the framework
@@ -148,15 +148,9 @@ export abstract class Actor<E> extends DurableObject<E> {
         if (!this.identifier) {
             this.identifier = DEFAULT_ACTOR_NAME;
         }
-    }
 
-    /**
-     * Initialize method that will be called after persisted properties are loaded.
-     * Subclasses should override this method for initialization code that needs
-     * access to persisted properties.
-     */
-    protected async init(): Promise<void> {
-        // Base implementation does nothing
+        // Call user defined onInit method
+        this.onInit();
     }
     
     /**
@@ -188,6 +182,23 @@ export abstract class Actor<E> extends DurableObject<E> {
     }
 
     /**
+     * Lifecycle method that is called when the actor is initialized.
+     * @protected
+     */
+    protected async onInit() {
+        // Default implementation is a no-op
+    }
+
+    /**
+     * Lifecycle method that is called when the actor is notified of an alarm.
+     * @protected
+     * @param alarmInfo - Information about the alarm that was triggered
+     */
+    protected async onAlarm(alarmInfo?: AlarmInvocationInfo) {
+        // Default implementation is a no-op
+    }
+
+    /**
      * Execute SQL queries against the Agent's database
      * @template T Type of the returned rows
      * @param strings SQL query template strings
@@ -214,7 +225,10 @@ export abstract class Actor<E> extends DurableObject<E> {
         }
     }
 
-    alarm(alarmInfo?: AlarmInvocationInfo): void | Promise<void> {
+    async alarm(alarmInfo?: AlarmInvocationInfo): Promise<void> {
+        // Call user defined onAlarm method before proceeding
+        await this.onAlarm(alarmInfo);
+
         if (this.alarms) {
             return this.alarms.alarm(alarmInfo);
         }
