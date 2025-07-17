@@ -57,6 +57,16 @@ export abstract class Actor<E> extends DurableObject<E> {
     public __studio(_: any) {
         return this.storage.__studio(_);
     }
+    
+    /**
+     * Hook that is called whenever a @Persist decorated property is stored in the database.
+     * Override this method to listen to persistence events.
+     * @param key The property key that was persisted
+     * @param value The value that was persisted
+     */
+    protected onPersist(key: string, value: any) {
+        // Default implementation is a no-op
+    }
 
     /**
      * Set the identifier for the actor as named by the client

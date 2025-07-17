@@ -170,6 +170,15 @@ export async function persistProperty(instance: any, propertyKey: string, value:
             statement: 'INSERT INTO _actor_persist (property, value) VALUES (?, ?) ON CONFLICT(property) DO UPDATE SET value = ?',
             params: [propertyKey, serializedValue, serializedValue]
         });
+        
+        // Call the onPersist hook if it exists
+        if (typeof instance.onPersist === 'function') {
+            try {
+                await instance.onPersist(propertyKey, value);
+            } catch (hookErr: any) {
+                console.error(`Error in onPersist hook for property ${propertyKey}:`, hookErr);
+            }
+        }
     } catch (err: any) {
         console.error(`Error persisting property ${propertyKey}:`, err);
         throw err;
