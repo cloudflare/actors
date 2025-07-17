@@ -132,7 +132,7 @@ export abstract class Actor<E> extends DurableObject<E> {
                 await this._initializePersistedProperties();
                 
                 // Call the initialize method after persisted properties are loaded
-                await this.init();
+                await this.onInit();
             });
         } else {
             // @ts-ignore - This is handled internally by the framework
@@ -151,15 +151,6 @@ export abstract class Actor<E> extends DurableObject<E> {
 
         // Call user defined onInit method
         this.onInit();
-    }
-
-    /**
-     * Initialize method that will be called after persisted properties are loaded.
-     * Subclasses should override this method for initialization code that needs
-     * access to persisted properties.
-     */
-    protected async init(): Promise<void> {
-        // Base implementation does nothing
     }
     
     /**
@@ -195,14 +186,6 @@ export abstract class Actor<E> extends DurableObject<E> {
      * @protected
      */
     protected async onInit() {
-        // Default implementation is a no-op
-    }
-
-    /**
-     * Lifecycle method that is called when the actor is destroyed.
-     * @protected
-     */
-    protected async onDestroy() {
         // Default implementation is a no-op
     }
 
