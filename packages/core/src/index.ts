@@ -260,9 +260,6 @@ export abstract class Actor<E> extends DurableObject<E> {
      * @throws Will throw an exception when forceEviction is true
      */
     async destroy(_?: { forceEviction?: boolean }) {
-        // Call user defined onDestroy method before proceeding
-        await this.onDestroy();
-
         // If tracking instance is defined, delete the instance name from the tracking instance map.
         if (this.identifier) {
             try {
