@@ -148,9 +148,6 @@ export abstract class Actor<E> extends DurableObject<E> {
         if (!this.identifier) {
             this.identifier = DEFAULT_ACTOR_NAME;
         }
-
-        // Call user defined onInit method
-        // this.onInit();
     }
     
     /**
