@@ -150,7 +150,7 @@ export abstract class Actor<E> extends DurableObject<E> {
         }
 
         // Call user defined onInit method
-        this.onInit();
+        // this.onInit();
     }
     
     /**
