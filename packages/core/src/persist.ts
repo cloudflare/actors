@@ -367,23 +367,47 @@ export async function initializePersistedProperties(instance: any): Promise<void
                             parsedValue = typeof parsedValue.value === 'string' ? parsedValue.value : {};
                         }
                         
-                        // Ensure the object structure matches the expected schema for known properties
-                        // This is specifically for the example in persist/src/index.ts
-                        if (row.property === 'myCustomObject' && typeof parsedValue === 'object') {
-                            // Make sure customKey exists and is an object
-                            if (!parsedValue.customKey || typeof parsedValue.customKey !== 'object') {
-                                console.log(`Fixing structure of ${row.property}.customKey`);
-                                parsedValue.customKey = { customDeepKey: "customDeepValue" };
-                            } else if (!parsedValue.customKey.customDeepKey) {
-                                // Make sure customDeepKey exists
-                                console.log(`Adding missing ${row.property}.customKey.customDeepKey`);
-                                parsedValue.customKey.customDeepKey = "customDeepValue";
+                        // Generic handling for type transitions during initialization
+                        // Check if we have an initial value defined on the class
+                        const initialValue = instance[row.property];
+                        if (initialValue !== undefined && typeof initialValue === 'object' && initialValue !== null) {
+                            // If the initial value is an object but the parsed value is not
+                            // or if the parsed value is missing expected nested properties
+                            if (typeof parsedValue !== 'object' || parsedValue === null) {
+                                console.warn(`Property ${row.property} type mismatch: expected object, got ${typeof parsedValue}. Resetting to initial structure.`);
+                                // Reset to the initial structure
+                                parsedValue = structuredClone(initialValue);
+                            } else {
+                                // Ensure all expected nested properties exist
+                                ensureObjectStructure(parsedValue, initialValue);
                             }
                         }
                     } catch (parseErr) {
                         console.error(`Failed to parse persisted value for ${row.property}:`, parseErr);
                         // Use an empty object as fallback
                         parsedValue = {};
+                    }
+                    
+                    // Helper function to ensure object structure matches expected structure
+                    function ensureObjectStructure(target: any, template: any) {
+                        if (target === null || typeof target !== 'object' || 
+                            template === null || typeof template !== 'object') {
+                            return;
+                        }
+                        
+                        // For each property in the template
+                        for (const key in template) {
+                            // If the template has a nested object
+                            if (template[key] !== null && typeof template[key] === 'object') {
+                                // If the target doesn't have this property or it's not an object
+                                if (!target[key] || typeof target[key] !== 'object') {
+                                    // Create the object structure
+                                    target[key] = Array.isArray(template[key]) ? [] : {};
+                                }
+                                // Recursively ensure structure
+                                ensureObjectStructure(target[key], template[key]);
+                            }
+                        }
                     }
                     
                     // Create a function to trigger persistence for this property
