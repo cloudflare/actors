@@ -89,9 +89,33 @@ function createDeepProxy(value: any, instance: any, propertyKey: string, trigger
                     return createDeepProxy(newObj, instance, propertyKey, triggerPersist);
                 }
                 
-                // If the property is a primitive but is being accessed as an object,
-                // we'll return a proxy that will handle the property access and convert
-                // it to an object when needed
+                // Special handling for array methods that modify the array
+                if (Array.isArray(target) && typeof prop === 'function') {
+                    const mutatingArrayMethods = ['push', 'pop', 'shift', 'unshift', 'splice', 'sort', 'reverse', 'fill'];
+                    if (mutatingArrayMethods.includes(key as string)) {
+                        // Return a wrapped function that triggers persistence after the operation
+                        return function(...args: any[]) {
+                            const result = prop.apply(target, args);
+                            triggerPersist();
+                            return result;
+                        };
+                    }
+                }
+                
+                // Special handling for Map and Set methods
+                if ((target instanceof Map || target instanceof Set) && typeof prop === 'function') {
+                    const mutatingCollectionMethods = ['set', 'delete', 'clear', 'add'];
+                    if (mutatingCollectionMethods.includes(key as string)) {
+                        // Return a wrapped function that triggers persistence after the operation
+                        return function(...args: any[]) {
+                            const result = prop.apply(target, args);
+                            triggerPersist();
+                            return result;
+                        };
+                    }
+                }
+                
+                // If the property is an object, create a proxy for it
                 if (prop !== null && typeof prop === 'object' && !Object.isFrozen(prop)) {
                     return createDeepProxy(prop, instance, propertyKey, triggerPersist);
                 }

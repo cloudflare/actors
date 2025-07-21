@@ -10,7 +10,7 @@ export class MyPersistActor extends Actor<Env> {
     @Persist
     public myCustomObject: Record<string, any> = {
         customKey: {
-            customDeepKey: "customDeepValue"
+            customDeepKey: []
         }
     };
 
@@ -18,7 +18,7 @@ export class MyPersistActor extends Actor<Env> {
         // Because we have `@Persist` on our property, the value will be automatically loaded
         // before this method is called. The `init()` method is called from our constructor so
         // you could use this as a replacement to `constructor`.
-        console.log('Previous value: ', this.myCustomNumber);
+        // console.log('Previous value: ', this.myCustomNumber);
         console.log('Previous object: ', JSON.stringify(this.myCustomObject));
     }
 
@@ -28,8 +28,8 @@ export class MyPersistActor extends Actor<Env> {
         // Update the simple property
         this.myCustomNumber = result;
         
-        // Update the nested property - this should work automatically
-        this.myCustomObject.customKey.customDeepKey = `new value ${result}`;
+        // Update the nested property
+        this.myCustomObject.customKey.customDeepKey.push(result)
         
         return new Response(`Current value: ${result} Current object: ${JSON.stringify(this.myCustomObject)}`);
     }
