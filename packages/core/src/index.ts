@@ -81,7 +81,7 @@ export abstract class Actor<E> extends DurableObject<E> {
      * @param request - The incoming request
      * @returns The name string value defined by the client application to reference an instance
      */
-    static nameFromRequest = (request: Request): string => {
+    static async nameFromRequest(request: Request): Promise<string | undefined> {
         return DEFAULT_ACTOR_NAME;
     };
 
@@ -343,7 +343,22 @@ export function handler<E>(input: HandlerInput<E>, opts?: HandlerOptions) {
         const worker = {
             async fetch(request: Request, env: E, ctx: ExecutionContext): Promise<Response> {
                 try {
-                    const idString = (ObjectClass as any).nameFromRequest(request);
+                    const idString = await (ObjectClass as any).nameFromRequest(request);
+
+                    // If no identifier is found or returned in `nameFromRequest` method, throw an error
+                    // to prevent attempting to access an instance that is invalid.
+                    if (idString === undefined) {
+                        return new Response(
+                            JSON.stringify({ error: "Internal Server Error", message: "Invalid actor identifier" }),
+                            {
+                                status: 500,
+                                headers: {
+                                    "Content-Type": "application/json"
+                                }
+                            }
+                        );
+                    }
+
                     const stub = getActor(ObjectClass as ActorConstructor<Actor<E>>, idString);
 
                     // If tracking is enabled, track the current actor identifier in a separate durable object.

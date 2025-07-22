@@ -14,11 +14,17 @@ export class MyPersistActor extends Actor<Env> {
         }
     };
 
+    static async nameFromRequest(request: Request): Promise<string | undefined> {
+        // Pause for 500 milliseconds to mimic async operation
+        await new Promise(resolve => setTimeout(resolve, 500));
+        return 'default';
+    }
+
     protected override async onInit(): Promise<void> {
         // Because we have `@Persist` on our property, the value will be automatically loaded
         // before this method is called. The `init()` method is called from our constructor so
         // you could use this as a replacement to `constructor`.
-        // console.log('Previous value: ', this.myCustomNumber);
+        console.log('Previous value: ', this.myCustomNumber);
         console.log('Previous object: ', JSON.stringify(this.myCustomObject));
     }
 
