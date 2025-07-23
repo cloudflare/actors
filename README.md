@@ -8,7 +8,7 @@ We are building a full-featured framework that makes developing Cloudflare Durab
 
 - [Request Handler](./examples/handler/) to easily define entrypoints to your Actor, Worker, or Request
 - [Lifecycle Methods](./examples/lifecycle-hooks/) enable you to tap into important lifecycle events
-- **Persistent Properties** that store property values between requests and evictions
+- [Persistent Properties](./examples/persist) that store property values between requests and evictions
 - [RPC Interface](./examples/rpc/) into other Actors with a simple `MyActor.get('id')` interface
 - [Managing Instances](./examples/manage-instances/) track, delete, and access all instances that have been created
 - [Location Placement](./examples/location-placement/) allow you to control the location of your Actor
