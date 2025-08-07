@@ -5,15 +5,17 @@
     "main": "../../dist/core/index.js",
     "types": "../../dist/core/index.d.ts",
     "scripts": {
-      "build": "tsc -p ."
+        "build": "tsc -p .",
+        "test": "vitest --run"
     },
     "dependencies": {
-      "actor-storage": "0.0.0"
-  },
-  "devDependencies": {
-      "@cloudflare/vite-plugin": "1.2.2",
-      "typescript": "^5.5.2",
-      "vite": "^6.3.5",
-      "wrangler": "^4.16.0"
-	}
-  }
+        "actor-storage": "0.0.0"
+    },
+    "devDependencies": {
+        "@cloudflare/vite-plugin": "1.2.2",
+        "typescript": "^5.5.2",
+        "vite": "^6.3.5",
+        "vitest": "^3.2.4",
+        "wrangler": "^4.16.0"
+    }
+}
