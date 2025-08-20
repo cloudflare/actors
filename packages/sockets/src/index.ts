@@ -42,7 +42,8 @@ export class Sockets<P extends DurableObject<any>> {
 
     message(message: string, to?: RecipientType[] | '*', exclude?: RecipientType[]) {
         for (const [id, socket] of this.connections.entries()) {
-            if (to?.length === 0 || !to || to === '*') {
+            // If no `to` recipient is defined, default send message to everyone
+            if (to === '*' || !to || to?.length === 0) {
                 // If the `id` is in the exclude list then skip this iteration
                 if (exclude?.includes(id)) {
                     continue;
@@ -53,6 +54,7 @@ export class Sockets<P extends DurableObject<any>> {
                     continue;
                 }
 
+                // Send message if the `to` is not excluded
                 socket.send(message);
             } else if (to?.includes(id)) {
                 // When `to` is defined we only send the message to the

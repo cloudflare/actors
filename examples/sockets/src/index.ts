@@ -7,8 +7,8 @@ export class MySocketsActor extends Actor<Env> {
             sockets: {
                 upgradePath: '/ws', // Also defaults to `/ws` when not present,
                 autoResponse: {
-                    ping: 'pong',
-                    pong: 'ping'
+                    ping: 'ping',
+                    pong: 'pong'
                 }
             }
         };
@@ -31,9 +31,8 @@ export class MySocketsActor extends Actor<Env> {
     }
 
     protected onSocketMessage(ws: WebSocket, message: any) {
-        // Echo message back when recieved
-        const senderSocketId = ws.deserializeAttachment?.()?.connectionId;
-        this.sockets.message('Received!', ['*'], [senderSocketId]);
+        // Echo message back to everyone except the sender
+        this.sockets.message('Received!', '*', [ws]);
     }
 }
 
