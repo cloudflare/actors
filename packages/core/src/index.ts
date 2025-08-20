@@ -1,7 +1,8 @@
 import { env, DurableObject, WorkerEntrypoint } from "cloudflare:workers";
 import { Storage } from "../../storage/src/index";
 import { Alarms } from "../../alarms/src/index";
-import { Persist, PERSISTED_PROPERTIES, PERSISTED_VALUES, initializePersistedProperties, persistProperty } from "./persist";
+import { Sockets } from "../../sockets/src/index";
+import { Persist, PERSISTED_VALUES, initializePersistedProperties, persistProperty } from "./persist";
 
 export { Persist };
 
@@ -22,6 +23,13 @@ export type ActorConstructor<T extends Actor<any> = Actor<any>> = new (state: Ac
  */
 export type ActorConfiguration = {
     locationHint?: DurableObjectLocationHint;
+    sockets?: {
+        upgradePath?: string;
+        autoResponse?: {
+            ping: string;
+            pong: string;
+        }
+    }
 }
 
 /**
@@ -53,19 +61,10 @@ export abstract class Actor<E> extends DurableObject<E> {
     public identifier?: string;
     public storage: Storage;
     public alarms: Alarms<this>;
+    public sockets: Sockets<this>;
 
     public __studio(_: any) {
         return this.storage.__studio(_);
-    }
-    
-    /**
-     * Hook that is called whenever a @Persist decorated property is stored in the database.
-     * Override this method to listen to persistence events.
-     * @param key The property key that was persisted
-     * @param value The value that was persisted
-     */
-    protected onPersist(key: string, value: any) {
-        // Default implementation is a no-op
     }
 
     /**
@@ -91,7 +90,12 @@ export abstract class Actor<E> extends DurableObject<E> {
      * @returns 
      */
     static configuration = (request: Request): ActorConfiguration => {
-        return { locationHint: undefined };
+        return { 
+            locationHint: undefined, 
+            sockets: { 
+                upgradePath: "/ws"
+            }
+        };
     }
 
     /**
@@ -121,6 +125,7 @@ export abstract class Actor<E> extends DurableObject<E> {
             
             this.storage = new Storage(ctx.storage);
             this.alarms = new Alarms(ctx, this);
+            this.sockets = new Sockets(ctx, this);
             
             // Initialize the persisted values map
             (this as any)[PERSISTED_VALUES] = new Map<string, any>();
@@ -138,8 +143,9 @@ export abstract class Actor<E> extends DurableObject<E> {
             // @ts-ignore - This is handled internally by the framework
             super();
             this.storage = new Storage(undefined);
-            this.alarms = new Alarms(undefined, this);
-            
+            this.alarms = new Alarms(undefined, this);  
+            this.sockets = new Sockets(undefined, this);  
+
             // Initialize the persisted values map
             (this as any)[PERSISTED_VALUES] = new Map<string, any>();
         }
@@ -175,7 +181,29 @@ export abstract class Actor<E> extends DurableObject<E> {
      * @returns A Promise that resolves to a Response
      */
     async fetch(request: Request): Promise<Response> {
-        throw new Error('fetch() must be implemented in derived class');
+        // If the request route is `/ws` then we should upgrade the connection to a WebSocket
+        // Get configuration from the static property
+        const config = (this.constructor as typeof Actor).configuration(request);
+        
+        // Parse the URL to check if the path component matches the upgradePath
+        const url = new URL(request.url);
+        const upgradePath = config?.sockets?.upgradePath ?? "/ws";
+        if (url.pathname === upgradePath || url.pathname.startsWith(`${upgradePath}/`)) {
+            const shouldUpgrade = this.shouldUpgradeSocket(request);
+            
+            // Only continue to upgrade path if shouldUpgrade returns true
+            if (shouldUpgrade) {
+                return Promise.resolve(this.onSocketUpgrade(request));
+            }
+        }
+
+        // Autoresponse in sockets allows clients to send a ping message and receive a pong response
+        // without waking the durable object up from hibernation.
+        if (config?.sockets?.autoResponse) {
+            this.ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair(config.sockets.autoResponse.ping, config.sockets.autoResponse.pong));
+        }
+
+        return this.onRequest(request);
     }
 
     /**
@@ -193,6 +221,79 @@ export abstract class Actor<E> extends DurableObject<E> {
      */
     protected async onAlarm(alarmInfo?: AlarmInvocationInfo) {
         // Default implementation is a no-op
+    }
+
+    /**
+     * Hook that is called whenever a @Persist decorated property is stored in the database.
+     * Override this method to listen to persistence events.
+     * @param key The property key that was persisted
+     * @param value The value that was persisted
+     */
+    protected onPersist(key: string, value: any) {
+        // Default implementation is a no-op
+    }
+
+    protected onRequest(request: Request): Promise<Response> {
+        return Promise.resolve(new Response("Not Found", { status: 404 }));
+    }
+
+    protected shouldUpgradeSocket(request: Request): boolean {
+        // By default we do not want to assume every application needs to use sockets
+        // and we do not want to upgrade every request to a socket.
+        return false;
+    }
+
+    // Only need to override if you want to handle the socket upgrade yourself.
+    // Otherwise this is all handled for you automatically.
+    protected onSocketUpgrade(request: Request): Response {
+        const client = this.sockets.acceptWebSocket(request);
+        this.onSocketConnect(request);
+
+        return new Response(null, {
+            status: 101,
+            webSocket: client,
+        });
+    }
+
+    protected onSocketConnect(request: Request) {
+        // Default implementation is a no-op
+    }
+
+    protected onSocketDisconnect(ws: WebSocket) {
+        // Default implementation is a no-op
+    }
+
+    protected onSocketMessage(ws: WebSocket, message: any) {
+        // Default implementation is a no-op
+    }
+
+    async webSocketMessage(ws: WebSocket, message: any) {
+        this.sockets.webSocketMessage(ws, message);
+
+        // Call user defined onSocketMessage method before proceeding
+        this.onSocketMessage(ws, message);
+    }
+
+    async webSocketClose(
+        ws: WebSocket,
+        code: number
+    ) {
+        // Close the WebSocket connection
+        this.sockets.webSocketClose(ws, code);
+
+        // Call user defined onSocketDisconnect method before proceeding
+        this.onSocketDisconnect(ws);
+    }
+
+    async alarm(alarmInfo?: AlarmInvocationInfo): Promise<void> {
+        // Call user defined onAlarm method before proceeding
+        await this.onAlarm(alarmInfo);
+
+        if (this.alarms) {
+            return this.alarms.alarm(alarmInfo);
+        }
+
+        return;
     }
 
     /**
@@ -220,17 +321,6 @@ export abstract class Actor<E> extends DurableObject<E> {
             console.error(`failed to execute sql query: ${query}`, e);
             throw e;
         }
-    }
-
-    async alarm(alarmInfo?: AlarmInvocationInfo): Promise<void> {
-        // Call user defined onAlarm method before proceeding
-        await this.onAlarm(alarmInfo);
-
-        if (this.alarms) {
-            return this.alarms.alarm(alarmInfo);
-        }
-
-        return;
     }
 
     /**
