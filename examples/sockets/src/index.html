@@ -55,7 +55,7 @@
                 ws.close();
             }
 
-            ws = new WebSocket(`${wsUrl}?id=${encodeURIComponent(sessionId)}&name=Brayden`);
+            ws = new WebSocket(`${wsUrl}?id=${encodeURIComponent(sessionId)}&name=John%20Doe`);
 
             ws.onopen = () => {
                 statusElement.textContent = 'Status: Connected';
