@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Actor Sockets Demo</title>
+    <style>
+        #messageContainer {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin: 10px 0;
+            height: 200px;
+            overflow-y: auto;
+        }
+        #sessionInfo {
+            background: #f0f0f0;
+            padding: 5px 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>Actor Sockets Demo</h1>
+    <div id="connectionStatus">Status: Disconnected</div>
+    <div id="messageContainer"></div>
+    
+    <input type="text" id="messageInput" placeholder="Type your message">
+    <button onclick="sendMessage()">Send Message</button>
+    <button onclick="disconnect()">Disconnect</button>
+
+    <script>
+        let ws;
+        const messageContainer = document.getElementById('messageContainer');
+        const statusElement = document.getElementById('connectionStatus');
+
+        // Replace with your deployed Worker URL below:
+        const wsUrl = `wss://actor-sockets.YOUR-IDENTIFIER.workers.dev/ws`;
+        
+        function getUrlParameter(name) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
+        }
+
+        function generateRandomId() {
+            return Math.random().toString(36).substring(2, 15);
+        }
+        
+        function connect() {
+            const sessionId = getUrlParameter('id') || generateRandomId();
+            const hasClientId = getUrlParameter('id') !== null;
+                        
+            if (ws) {
+                ws.close();
+            }
+
+            ws = new WebSocket(`${wsUrl}?id=${encodeURIComponent(sessionId)}&name=Brayden`);
+
+            ws.onopen = () => {
+                statusElement.textContent = 'Status: Connected';
+                addMessage('System', `Connected to server`);
+            };
+
+            ws.onmessage = (event) => {
+                addMessage('Received', event.data);
+            };
+
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                addMessage('Error', 'Connection error occurred');
+            };
+
+            ws.onclose = () => {
+                statusElement.textContent = 'Status: Disconnected';
+                addMessage('System', 'Disconnected from server');
+            };
+        }
+
+        function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const message = messageInput.value.trim();
+            
+            if (message && ws && ws.readyState === WebSocket.OPEN) {
+                const payload = JSON.stringify({
+                    message: message
+                });
+                ws.send(payload);
+                addMessage('Sent', message);
+                messageInput.value = '';
+            }
+        }
+
+        function disconnect() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.close();
+                statusElement.textContent = 'Status: Disconnected';
+                addMessage('System', 'Manually disconnected from server');
+            }
+        }
+
+        function addMessage(source, message) {
+            const messageElement = document.createElement('div');
+            messageElement.textContent = `${source}: ${message}`;
+            messageContainer.appendChild(messageElement);
+            messageContainer.scrollTop = messageContainer.scrollHeight;
+        }
+
+        // Connect when the page loads
+        connect();
+    </script>
+</body>
+</html>
