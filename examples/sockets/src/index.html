@@ -36,7 +36,7 @@
         const statusElement = document.getElementById('connectionStatus');
 
         // Replace with your deployed Worker URL below:
-        const wsUrl = `wss://actor-sockets.brayden-b8b.workers.dev/ws`;
+        const wsUrl = `wss://actor-sockets.YOUR-IDENTIFIER.workers.dev/ws`;
         
         function getUrlParameter(name) {
             const urlParams = new URLSearchParams(window.location.search);
@@ -55,7 +55,7 @@
                 ws.close();
             }
 
-            ws = new WebSocket(`${wsUrl}?id=${encodeURIComponent(sessionId)}&name=Brayden`);
+            ws = new WebSocket(`${wsUrl}?id=${encodeURIComponent(sessionId)}&name=John%20Doe`);
 
             ws.onopen = () => {
                 statusElement.textContent = 'Status: Connected';
