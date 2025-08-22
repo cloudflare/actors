@@ -247,7 +247,7 @@ export abstract class Actor<E> extends DurableObject<E> {
     // Otherwise this is all handled for you automatically.
     protected onSocketUpgrade(request: Request): Response {
         const client = this.sockets.acceptWebSocket(request);
-        this.onSocketConnect(request);
+        this.onSocketConnect(client, request);
 
         return new Response(null, {
             status: 101,
@@ -255,7 +255,7 @@ export abstract class Actor<E> extends DurableObject<E> {
         });
     }
 
-    protected onSocketConnect(request: Request) {
+    protected onSocketConnect(ws: WebSocket, request: Request) {
         // Default implementation is a no-op
     }
 
