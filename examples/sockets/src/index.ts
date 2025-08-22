@@ -22,7 +22,7 @@ export class MySocketsActor extends Actor<Env> {
         return true;
     }
 
-    protected onSocketConnect(request: Request) {
+    protected onSocketConnect(ws: WebSocket, request: Request) {
         console.log('Socket connected');
     }
 
