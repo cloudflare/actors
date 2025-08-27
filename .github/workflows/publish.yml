@@ -11,10 +11,10 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v2
         with:
-          node-version: '23.x'
-          registry-url: 'https://registry.npmjs.org'
+          node-version: "23.x"
+          registry-url: "https://registry.npmjs.org"
       - name: Install dependencies and build
-        run: npm ci && npm run build
+        run: npm ci --no-frozen-lockfile && npm run build
       - name: Publish package on NPM
         run: npm publish --access public
         env:
