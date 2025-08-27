@@ -247,12 +247,18 @@ export abstract class Actor<E> extends DurableObject<E> {
     // Otherwise this is all handled for you automatically.
     protected onSocketUpgrade(request: Request): Response {
         const client = this.sockets.acceptWebSocket(request);
-        this.onSocketConnect(client, request);
-
-        return new Response(null, {
+        
+        const response = new Response(null, {
             status: 101,
             webSocket: client,
         });
+        
+        // Schedule onSocketConnect to run after the response is sent
+        Promise.resolve().then(() => {
+            this.onSocketConnect(client, request);
+        });
+
+        return response;
     }
 
     protected onSocketConnect(ws: WebSocket, request: Request) {
@@ -502,8 +508,7 @@ export function getActor<T extends Actor<any>>(
     }
 
     const namespace = envObj[bindingName];
-    const stubId = namespace.idFromName(id);
-    const stub = namespace.get(stubId, { locationHint }) as DurableObjectStub<T>;
+    const stub = namespace.getByName(id, { locationHint }) as DurableObjectStub<T>;
     
     stub.setIdentifier(id);
     return stub;
