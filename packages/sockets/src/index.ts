@@ -86,7 +86,10 @@ export class Sockets<P extends DurableObject<any>> {
         ws.close(code, "Durable Object is closing WebSocket");
     }
 
-    acceptWebSocket(request: Request): WebSocket {
+    acceptWebSocket(request: Request): {
+        client: WebSocketWithMetadata;
+        server: WebSocketWithMetadata;
+    } {
         const webSocketPair = new WebSocketPair();
         const [client, server] = Object.values(webSocketPair) as [WebSocketWithMetadata, WebSocketWithMetadata];
 
@@ -117,6 +120,6 @@ export class Sockets<P extends DurableObject<any>> {
         this.connections.set(connectionId, server);
         this.context?.acceptWebSocket(server);
 
-        return client;
+        return { client, server };
     }
 }
