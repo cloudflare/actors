@@ -58,7 +58,11 @@ export abstract class Entrypoint<T> extends WorkerEntrypoint {
  * @template E - The type of the environment object that will be available to the actor
  */
 export abstract class Actor<E> extends DurableObject<E> {
+    /**
+     * @deprecated Use `name` instead as that maps to the value from `nameFromRequest`
+     */
     public identifier?: string;
+    public name?: string;
     public storage: Storage;
     public alarms: Alarms<this>;
     public sockets: Sockets<this>;
@@ -71,8 +75,9 @@ export abstract class Actor<E> extends DurableObject<E> {
      * Set the identifier for the actor as named by the client
      * @param id The identifier to set
      */
-    public async setIdentifier(id: string) {
+    public async setName(id: string) {
         this.identifier = id;
+        this.name = id;
     }
 
     /**
@@ -109,7 +114,7 @@ export abstract class Actor<E> extends DurableObject<E> {
         // This may seem repetitive from when we do this in `getActor` prior to returning the stub
         // but this allows classes to do `this.ctx.blockConcurrencyWhile` and log out the identifier
         // there. Without doing this again, that seems to fail for one reason or another.
-        stub.setIdentifier(id);
+        stub.setName(id);
 
         return stub;
     }
@@ -193,7 +198,7 @@ export abstract class Actor<E> extends DurableObject<E> {
             
             // Only continue to upgrade path if shouldUpgrade returns true
             if (shouldUpgrade) {
-                return Promise.resolve(this.onSocketUpgrade(request));
+                return Promise.resolve(this.onWebSocketUpgrade(request));
             }
         }
 
@@ -245,7 +250,7 @@ export abstract class Actor<E> extends DurableObject<E> {
 
     // Only need to override if you want to handle the socket upgrade yourself.
     // Otherwise this is all handled for you automatically.
-    protected onSocketUpgrade(request: Request): Response {
+    protected onWebSocketUpgrade(request: Request): Response {
         const client = this.sockets.acceptWebSocket(request);
         
         const response = new Response(null, {
@@ -253,31 +258,31 @@ export abstract class Actor<E> extends DurableObject<E> {
             webSocket: client,
         });
         
-        // Schedule onSocketConnect to run after the response is sent
+        // Schedule onWebSocketConnect to run after the response is sent
         Promise.resolve().then(() => {
-            this.onSocketConnect(client, request);
+            this.onWebSocketConnect(client, request);
         });
 
         return response;
     }
 
-    protected onSocketConnect(ws: WebSocket, request: Request) {
+    protected onWebSocketConnect(ws: WebSocket, request: Request) {
         // Default implementation is a no-op
     }
 
-    protected onSocketDisconnect(ws: WebSocket) {
+    protected onWebSocketDisconnect(ws: WebSocket) {
         // Default implementation is a no-op
     }
 
-    protected onSocketMessage(ws: WebSocket, message: any) {
+    protected onWebSocketMessage(ws: WebSocket, message: any) {
         // Default implementation is a no-op
     }
 
     async webSocketMessage(ws: WebSocket, message: any) {
         this.sockets.webSocketMessage(ws, message);
 
-        // Call user defined onSocketMessage method before proceeding
-        this.onSocketMessage(ws, message);
+        // Call user defined onWebSocketMessage method before proceeding
+        this.onWebSocketMessage(ws, message);
     }
 
     async webSocketClose(
@@ -287,8 +292,8 @@ export abstract class Actor<E> extends DurableObject<E> {
         // Close the WebSocket connection
         this.sockets.webSocketClose(ws, code);
 
-        // Call user defined onSocketDisconnect method before proceeding
-        this.onSocketDisconnect(ws);
+        // Call user defined onWebSocketDisconnect method before proceeding
+        this.onWebSocketDisconnect(ws);
     }
 
     async alarm(alarmInfo?: AlarmInvocationInfo): Promise<void> {
@@ -510,6 +515,6 @@ export function getActor<T extends Actor<any>>(
     const namespace = envObj[bindingName];
     const stub = namespace.getByName(id, { locationHint }) as DurableObjectStub<T>;
     
-    stub.setIdentifier(id);
+    stub.setName(id);
     return stub;
 }

@@ -22,15 +22,15 @@ export class MySocketsActor extends Actor<Env> {
         return true;
     }
 
-    protected onSocketConnect(ws: WebSocket, request: Request) {
+    protected onWebSocketConnect(ws: WebSocket, request: Request) {
         console.log('Socket connected');
     }
 
-    protected onSocketDisconnect(ws: WebSocket) {
+    protected onWebSocketDisconnect(ws: WebSocket) {
         console.log('Socket disconnected');
     }
 
-    protected onSocketMessage(ws: WebSocket, message: any) {
+    protected onWebSocketMessage(ws: WebSocket, message: any) {
         // Echo message back to everyone except the sender
         this.sockets.message('Received!', '*', [ws]);
     }
