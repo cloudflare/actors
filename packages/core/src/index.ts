@@ -73,6 +73,10 @@ export abstract class Actor<E> extends DurableObject<E> {
      */
     public async setIdentifier(id: string) {
         this.identifier = id;
+
+        // Set the actor name on our alarm so it can store a reference to the actor
+        // when an alarm is set (so actors awoken by alarms can be referenced by name).
+        this.alarms.actorName = this.identifier;
     }
 
     /**

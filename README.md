@@ -74,6 +74,27 @@ export default handler(MyActor);
 
 ## FAQ
 
+### Alarms
+
+<details>
+  <summary>What is the lifecycle of an Alarm trigger?</summary>
+  When an Actor is awoken by an Alarm trigger, it currently behaves in a slightly different order than if the Actor was already in memory. Below is the sequence of events.
+
+Cold Start:
+
+- [Callback]
+- onInit
+- onAlarm
+
+Warm Start:
+
+- onAlarm
+- [Callback]
+
+For the warm start instance, `onInit` would have already been called earlier before the alarm trigger.
+
+</details>
+
 ### General
 
 <details>

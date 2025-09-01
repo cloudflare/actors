@@ -19,6 +19,8 @@ export type Schedule<T = string, K extends keyof any = string> = {
   callback: K;
   /** Data to be passed to the callback */
   payload: T;
+  /** Actor identifier */
+  identifier: string;
 } & (
   | {
       /** Type of schedule for one-time execution at a specific time */
@@ -47,6 +49,7 @@ export type Schedule<T = string, K extends keyof any = string> = {
 export class Alarms<P extends DurableObject<any>> {
     private parent: P;
     public storage: DurableObjectStorage | undefined;
+    public actorName?: string;
 
     constructor(ctx: DurableObjectState | undefined, parent: P) {
         this.storage = ctx?.storage;
@@ -64,6 +67,7 @@ export class Alarms<P extends DurableObject<any>> {
                     time INTEGER,
                     delayInSeconds INTEGER,
                     cron TEXT,
+                    identifier TEXT,
                     created_at INTEGER DEFAULT (unixepoch())
                 )
             `);
@@ -100,10 +104,10 @@ export class Alarms<P extends DurableObject<any>> {
         if (when instanceof Date) {
           const timestamp = Math.floor(when.getTime() / 1000);
           this.sql`
-            INSERT OR REPLACE INTO _actor_alarms (id, callback, payload, type, time)
+            INSERT OR REPLACE INTO _actor_alarms (id, callback, payload, type, time, identifier)
             VALUES (${id}, ${callback}, ${JSON.stringify(
               payload
-            )}, 'scheduled', ${timestamp})
+            )}, 'scheduled', ${timestamp}, ${this.actorName ?? 'default'})
           `;
     
           await this._scheduleNextAlarm();
@@ -114,6 +118,7 @@ export class Alarms<P extends DurableObject<any>> {
             payload: payload as T,
             time: timestamp,
             type: "scheduled",
+            identifier: this.actorName ?? 'default'
           };
         }
 
@@ -122,10 +127,10 @@ export class Alarms<P extends DurableObject<any>> {
           const timestamp = Math.floor(time.getTime() / 1000);
     
           this.sql`
-            INSERT OR REPLACE INTO _actor_alarms (id, callback, payload, type, delayInSeconds, time)
+            INSERT OR REPLACE INTO _actor_alarms (id, callback, payload, type, delayInSeconds, time, identifier)
             VALUES (${id}, ${callback}, ${JSON.stringify(
               payload
-            )}, 'delayed', ${when}, ${timestamp})
+            )}, 'delayed', ${when}, ${timestamp}, ${this.actorName ?? 'default'})
           `;
     
           await this._scheduleNextAlarm();
@@ -137,6 +142,7 @@ export class Alarms<P extends DurableObject<any>> {
             delayInSeconds: when,
             time: timestamp,
             type: "delayed",
+            identifier: this.actorName ?? 'default'
           };
         }
         if (typeof when === "string") {
@@ -144,10 +150,10 @@ export class Alarms<P extends DurableObject<any>> {
           const timestamp = Math.floor(nextExecutionTime.getTime() / 1000);
     
           this.sql`
-            INSERT OR REPLACE INTO _actor_alarms (id, callback, payload, type, cron, time)
+            INSERT OR REPLACE INTO _actor_alarms (id, callback, payload, type, cron, time, identifier)
             VALUES (${id}, ${callback}, ${JSON.stringify(
               payload
-            )}, 'cron', ${when}, ${timestamp})
+            )}, 'cron', ${when}, ${timestamp}, ${this.actorName ?? 'default'})
           `;
     
           await this._scheduleNextAlarm();
@@ -159,6 +165,7 @@ export class Alarms<P extends DurableObject<any>> {
             cron: when,
             time: timestamp,
             type: "cron",
+            identifier: this.actorName ?? 'default'
           };
         }
         throw new Error("Invalid schedule type");
@@ -248,7 +255,7 @@ export class Alarms<P extends DurableObject<any>> {
     private async _scheduleNextAlarm() {
         // Find the next schedule that needs to be executed
         const result = this.sql`
-          SELECT time FROM _actor_alarms 
+          SELECT time, identifier FROM _actor_alarms 
           WHERE time > ${Math.floor(Date.now() / 1000)}
           ORDER BY time ASC 
           LIMIT 1
@@ -275,9 +282,14 @@ export class Alarms<P extends DurableObject<any>> {
             console.error(`callback ${row.callback} not found`);
             continue;
           }
-          // await agentContext.run(
-          //   { agent: this, connection: undefined, request: undefined },
-          //   async () => {
+
+          try {
+            const identifier = row.identifier;
+            (this.parent as any).setIdentifier(identifier);
+          } catch (error) {
+            console.error(`error setting identifier`, error);
+          }
+          
           try {
             await (
               callback as (
@@ -288,8 +300,7 @@ export class Alarms<P extends DurableObject<any>> {
           } catch (e) {
             console.error(`error executing callback "${row.callback}"`, e);
           }
-          //   }
-          // );
+          
           if (row.type === "cron") {
             // Update next execution time for cron schedules
             const nextExecutionTime = getNextCronTime(row.cron);
