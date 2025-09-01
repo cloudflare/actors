@@ -62,7 +62,8 @@ export abstract class Actor<E> extends DurableObject<E> {
      * @deprecated Use `name` instead as that maps to the value from `nameFromRequest`
      */
     public identifier?: string;
-    public name?: string;
+    private _name?: string;
+    public get name(): string | undefined { return this._name; }
     public storage: Storage;
     public alarms: Alarms<this>;
     public sockets: Sockets<this>;
@@ -77,7 +78,7 @@ export abstract class Actor<E> extends DurableObject<E> {
      */
     public async setName(id: string) {
         this.identifier = id;
-        this.name = id;
+        this._name = id;
     }
 
     /**
@@ -155,9 +156,13 @@ export abstract class Actor<E> extends DurableObject<E> {
             (this as any)[PERSISTED_VALUES] = new Map<string, any>();
         }
 
-        // Set a default identifier if none exists
+        // Set a default identifier or name if none exists
         if (!this.identifier) {
             this.identifier = DEFAULT_ACTOR_NAME;
+        }
+
+        if (!this.name) {
+            this._name = DEFAULT_ACTOR_NAME;
         }
     }
     
@@ -359,11 +364,11 @@ export abstract class Actor<E> extends DurableObject<E> {
      */
     async destroy(_?: { forceEviction?: boolean }) {
         // If tracking instance is defined, delete the instance name from the tracking instance map.
-        if (this.identifier) {
+        if (this.name) {
             try {
                 const trackerActor = getActor(this.constructor as ActorConstructor<Actor<E>>, TRACKING_ACTOR_NAME) as unknown as Actor<E>;
                 if (trackerActor) {
-                    await trackerActor.sql`DELETE FROM actors WHERE identifier = ${this.identifier};`;
+                    await trackerActor.sql`DELETE FROM actors WHERE identifier = ${this.name};`;
                 }
             } catch (e) {
                 console.error(`Failed to delete actor from tracking instance: ${e instanceof Error ? e.message : 'Unknown error'}`);
