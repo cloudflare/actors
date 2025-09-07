@@ -42,24 +42,14 @@ export class Sockets<P extends DurableObject<any>> {
 
     message(message: string, to?: RecipientType[] | '*', exclude?: RecipientType[]) {
         for (const [id, socket] of this.connections.entries()) {
-            // If no `to` recipient is defined, default send message to everyone
-            if (to === '*' || !to || to?.length === 0) {
-                // If the `id` is in the exclude list then skip this iteration
-                if (exclude?.includes(id)) {
-                    continue;
-                }
+            // Skip if the `id` or `socket` is in the `exclude` list
+            if (exclude?.includes(id) || exclude?.includes(socket)) {
+              continue;
+            }
 
-                // If the `socket` is in the exclude list then skip this iteration
-                if (exclude?.includes(socket)) {
-                    continue;
-                }
-
-                // Send message if the `to` is not excluded
-                socket.send(message);
-            } else if (to?.includes(id)) {
-                // When `to` is defined we only send the message to the
-                // specified recipients.
-                socket.send(message);
+            // Send to all if 'to' is '*' or empty, otherwise only to specified recipients
+            if (to === "*" || !to?.length || to.includes(id) || to.includes(socket)) {
+              socket.send(message);
             }
         }
     }
@@ -86,7 +76,10 @@ export class Sockets<P extends DurableObject<any>> {
         ws.close(code, "Durable Object is closing WebSocket");
     }
 
-    acceptWebSocket(request: Request): WebSocket {
+    acceptWebSocket(request: Request): {
+        client: WebSocketWithMetadata;
+        server: WebSocketWithMetadata;
+    } {
         const webSocketPair = new WebSocketPair();
         const [client, server] = Object.values(webSocketPair) as [WebSocketWithMetadata, WebSocketWithMetadata];
 
@@ -117,6 +110,6 @@ export class Sockets<P extends DurableObject<any>> {
         this.connections.set(connectionId, server);
         this.context?.acceptWebSocket(server);
 
-        return client;
+        return { client, server };
     }
 }
