@@ -53,9 +53,9 @@
         "nanoid": "^5.1.5"
     },
     "devDependencies": {
-        "@cloudflare/vite-plugin": "1.6.0",
+        "@cloudflare/vite-plugin": "1.12.3",
         "typescript": "^5.5.2",
         "vite": "^6.3.5",
-        "wrangler": "^4.16.0"
+        "wrangler": "^4.34.0"
     }
 }
