@@ -63,6 +63,8 @@ export abstract class Actor<E> extends DurableObject<E> {
      */
     public identifier?: string;
     private _name?: string;
+    private _onInitCalled: boolean;
+    private _setNameCalled: boolean;
     public get name(): string | undefined { return this._name; }
     public storage: Storage;
     public alarms: Alarms<this>;
@@ -79,10 +81,17 @@ export abstract class Actor<E> extends DurableObject<E> {
     public async setName(id: string) {
         this.identifier = id;
         this._name = id;
+        this._setNameCalled = true;
       
         // Set the actor name on our alarm so it can store a reference to the actor
         // when an alarm is set (so actors awoken by alarms can be referenced by name).
         this.alarms.actorName = this.identifier;
+
+        // Call onInit if it hasn't been called yet
+        if (!this._onInitCalled) {
+            this._onInitCalled = true;
+            await this.onInit();
+        }
     }
 
     /**
@@ -132,7 +141,16 @@ export abstract class Actor<E> extends DurableObject<E> {
     constructor(ctx?: ActorState, env?: E) {
         if (ctx && env) {
             super(ctx, env);
-            
+        } else {
+            // @ts-ignore - This is handled internally by the framework
+            super();
+        }
+        
+        // Initialize flags
+        this._onInitCalled = false;
+        this._setNameCalled = false;
+        
+        if (ctx && env) {
             this.storage = new Storage(ctx.storage);
             this.alarms = new Alarms(ctx, this);
             this.sockets = new Sockets(ctx, this);
@@ -145,13 +163,8 @@ export abstract class Actor<E> extends DurableObject<E> {
             ctx.blockConcurrencyWhile(async () => {
                 // Load persisted properties
                 await this._initializePersistedProperties();
-                
-                // Call the initialize method after persisted properties are loaded
-                await this.onInit();
             });
         } else {
-            // @ts-ignore - This is handled internally by the framework
-            super();
             this.storage = new Storage(undefined);
             this.alarms = new Alarms(undefined, this);  
             this.sockets = new Sockets(undefined, this);  
@@ -177,6 +190,24 @@ export abstract class Actor<E> extends DurableObject<E> {
      */
     private async _initializePersistedProperties(): Promise<void> {
         await initializePersistedProperties(this);
+    }
+
+    /**
+     * Waits for setName to be called before proceeding with request handling.
+     * This ensures that onRequest has access to the correct identifier.
+     * @private
+     */
+    private async _waitForSetName(): Promise<void> {
+        const timeout = 5000; // 5 second timeout
+        const startTime = Date.now();
+        
+        // Poll until setName has been called or timeout is reached
+        while (!this._setNameCalled) {
+            if (Date.now() - startTime > timeout) {
+                throw new Error(`setName() was not called within ${timeout}ms. Actor may not be properly initialized.`);
+            }
+            await new Promise(resolve => setTimeout(resolve, 1));
+        }
     }
     
     /**
@@ -215,6 +246,18 @@ export abstract class Actor<E> extends DurableObject<E> {
         // without waking the durable object up from hibernation.
         if (config?.sockets?.autoResponse) {
             this.ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair(config.sockets.autoResponse.ping, config.sockets.autoResponse.pong));
+        }
+
+        // Wait for setName to be called before running onRequest
+        if (!this._setNameCalled) {
+            // If setName hasn't been called yet, wait for it
+            // This ensures onRequest has access to the correct identifier
+            try {
+                await this._waitForSetName();
+            } catch (error) {
+                console.error('Failed to wait for setName:', error);
+                return new Response("Actor initialization timeout", { status: 503 });
+            }
         }
 
         return this.onRequest(request);
