@@ -37,8 +37,11 @@ export class MyDurableObject extends DurableObject<Env> {
     }
 
     // Called from our alarm defined above
-    public async addFromAlarm(a: number, b: number): Promise<number> {
-        console.log(`Alarm triggered, you can view this alarm in your Worker logs: ${a} + ${b}`);
+    public async addFromAlarm([a, b]: number[], row: unknown): Promise<number> {
+        console.log(
+            `Alarm triggered, you can view this alarm in your Worker logs: ${a} + ${b}`,
+            { row }
+        );
         return a + b;
     }
 }
