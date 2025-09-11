@@ -13,7 +13,7 @@ export class MyActor extends Actor<Env> {
     // Visit https://localhost:5173/?user_id=123 to trigger this Actor and use
     // the `user_id` query parameter to define the unique identifier of the Actor.
     // This value will be what is tracked in the tracking instance.
-    static nameFromRequest(request: Request): string {
+    static async nameFromRequest(request: Request) {
         const url = new URL(request.url);
         const userId = url.searchParams.get('user_id');
         return `instance-${userId}`;
@@ -27,7 +27,7 @@ export class MyActor extends Actor<Env> {
         // Delete the instance by identifier
         this.deleteInstanceExample('123');
 
-        return new Response(`Hello, World!`);
+        return new Response(`Hello, World! (${await MyActor.nameFromRequest(request)})`);
     }
 
     deleteInstanceExample(identifier: string) {
