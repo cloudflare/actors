@@ -193,7 +193,7 @@ export class MyAlarmActor extends Actor<Env> {
     }
 
     // Called from our alarm defined above
-    public async addFromAlarm(a: number, b: number, desc: string): Promise<number> {
+    public async addFromAlarm([a, b, desc]: [number, number, string]): Promise<number> {
         console.log(`Alarm triggered, you can view this alarm in your Worker logs: ${a} + ${b} (desc: ${desc})`);
         return a + b;
     }
