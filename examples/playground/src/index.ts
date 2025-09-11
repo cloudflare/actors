@@ -105,7 +105,7 @@ export class MyRPCActor extends Actor<Env> {
         super(ctx, env);
     
         this.ctx.blockConcurrencyWhile(async () => {
-            console.log('ID: ', this.identifier)
+            console.log('ID: ', this.name)
         });
     }
 
@@ -141,7 +141,7 @@ export class MyLocationHintActor extends Actor<Env> {
 // Example Actor with storage package interactions
 // -----------------------------------------------
 export class MyStorageActor extends Actor<Env> {
-    static nameFromRequest(request: Request) {
+    static async nameFromRequest(request: Request): Promise<string> {
         return "foobar"
     }
 
@@ -172,7 +172,7 @@ export class MyStorageActor extends Actor<Env> {
         // Now we can proceed with querying
         const limit = await this.add(5, 5);
         const query = this.sql`SELECT * FROM sqlite_master LIMIT ${limit};`
-        return new Response(`Identifier (${this.identifier} – ${this.ctx.id.toString()}) = ${JSON.stringify(query)}`)
+        return new Response(`Identifier (${this.name} – ${this.ctx.id.toString()}) = ${JSON.stringify(query)}`)
     }
 }
 // export default handler(MyStorageActor, {
