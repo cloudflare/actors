@@ -6,6 +6,8 @@ import { Persist, PERSISTED_VALUES, initializePersistedProperties, persistProper
 
 export { Persist };
 
+export * from "./retries";
+
 /**
  * Alias type for DurableObjectState to match the adopted Actor nomenclature.
  * This type represents the state of a Durable Object in Cloudflare Workers.
