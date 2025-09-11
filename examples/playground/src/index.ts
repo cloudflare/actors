@@ -7,7 +7,7 @@ import { Alarms } from "../../../packages/alarms/src";
  * ------------
  * How to test:
  * ------------
- * - Run `npm run cf-typegen && npm install` at the root level of the actor repo
+ * - Run `npm run cf-typegen --workspace examples/playground && npm install` at the root level of the actor repo
  * - Uncomment any of the examples below and run `npm run dev` inside the `examples/playground` folder
  * - Visit https://localhost:5173 to trigger this file
  * 
@@ -141,7 +141,7 @@ export class MyLocationHintActor extends Actor<Env> {
 // Example Actor with storage package interactions
 // -----------------------------------------------
 export class MyStorageActor extends Actor<Env> {
-    static nameFromRequest(request: Request) {
+    static override async nameFromRequest(request: Request): Promise<string | undefined> {
         return "foobar"
     }
 
