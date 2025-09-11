@@ -9,7 +9,7 @@
 			"new_sqlite_classes": [
 				"MyRPCActor",
 				"MyStorageActor",
-                "MyAlarmActor",
+        "MyAlarmActor",
 				"MyDurableObject",
 				"MyLocationHintActor"
 			],
