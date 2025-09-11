@@ -4,7 +4,7 @@
       "outDir": "../../dist/storage",
       "rootDir": ".",
       "composite": true,
-      "types": ["@cloudflare/vitest-pool-workers", "./cloudflare-test"]
+      "types": ["@cloudflare/vitest-pool-workers", "./cloudflare-test", "@cloudflare/workers-types"]
     },
     "include": ["**/*.ts"],
     "references": []
