@@ -105,7 +105,7 @@ export class MyRPCActor extends Actor<Env> {
         super(ctx, env);
     
         this.ctx.blockConcurrencyWhile(async () => {
-            console.log('ID: ', this.identifier)
+            console.log('Name: ', this.name)
         });
     }
 
