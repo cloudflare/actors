@@ -3,7 +3,10 @@
 	"name": "actor-sockets",
 	"main": "src/index.ts",
 	"compatibility_date": "2025-05-20",
-    "compatibility_flags": [],
+  "compatibility_flags": [],
+	"assets": {
+		"binding": "ASSETS"
+	},
 	"migrations": [
 		{
 			"new_sqlite_classes": [
