@@ -232,7 +232,7 @@ export class MyDurableObject extends DurableObject<Env> {
     }
 
     // Called from our alarm defined above
-    public async addFromAlarm(a: number, b: number): Promise<number> {
+    public async addFromAlarm([a, b]: [number, number]): Promise<number> {
         console.log(`Alarm triggered, you can view this alarm in your Worker logs: ${a} + ${b}`);
         return a + b;
     }
