@@ -152,7 +152,7 @@ export class Storage {
      */
     private async query(sql: string, params?: unknown[], isRaw?: boolean) {
         // Attempt to run migrations if they have not been ran already
-        this.runMigrations();
+        await this.runMigrations();
 
         // Now proceed with executing the query
         const cursor = await this.executeRawQuery({ sql, params })

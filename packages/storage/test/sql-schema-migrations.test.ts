@@ -6,6 +6,7 @@ import {
   SQLSchemaMigration,
   SQLSchemaMigrations,
 } from "../src/sql-schema-migrations";
+import { Storage } from "../src/index";
 
 function makeM(state: DurableObjectState, migrations: SQLSchemaMigration[]) {
   return new SQLSchemaMigrations({
@@ -267,6 +268,45 @@ describe("happy paths", async () => {
           ).rejects.toThrowError("migration ID cannot be negative: -1");
         }
       );
+    });
+  });
+
+});
+
+describe("lazy schema migrations", async () => {
+  it("with __studio", async () => {
+    // Check sending request directly to instance
+    const id = env.SQL_MIGRATIONS_DO.idFromName("emptyDO");
+    const stub = env.SQL_MIGRATIONS_DO.get(id);
+
+    await runInDurableObject(
+      stub,
+      async (instance: SQLMigrationsDO, state: DurableObjectState) => {
+        expect(instance).toBeInstanceOf(SQLMigrationsDO);
+        const storage = new Storage(state.storage);
+        storage.migrations = [
+          {
+            idMonotonicInc: 1,
+            description: "tbl1",
+            sql: `CREATE TABLE IF NOT EXISTS users(name TEXT PRIMARY KEY, age INTEGER);`,
+          },
+          {
+            idMonotonicInc: 2,
+            description: "data",
+            sql: `INSERT INTO users VALUES ('ironman', 100)`,
+          },
+       ]
+      const result = (await storage.__studio({ 
+        type: "query", 
+        statement: "SELECT name, age FROM users;" 
+      })) as Array<{ name: string; age: number }>;
+      expect(result).toEqual([ { name: "ironman", age: 100 }]);
+
+      const result1 = (await storage.__studio({ 
+        type: "query", 
+        statement: "SELECT name, age FROM users;" 
+      })) as Array<{ name: string; age: number }>;
+      expect(result1).toEqual([ { name: "ironman", age: 100 }]);
     });
   });
 });
