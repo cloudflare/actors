@@ -151,9 +151,6 @@ export class Storage {
      * @returns Promise resolving to either raw query results or formatted array
      */
     private async query(sql: string, params?: unknown[], isRaw?: boolean) {
-        // Attempt to run migrations if they have not been ran already
-        this.runMigrations();
-
         // Now proceed with executing the query
         const cursor = await this.executeRawQuery({ sql, params })
         if (!cursor) return []
