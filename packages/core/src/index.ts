@@ -200,23 +200,20 @@ export abstract class Actor<E> extends DurableObject<E> {
     private async _waitForSetName(): Promise<void> {
         const timeout = 5000; // 5 second timeout
         const startTime = Date.now();
-        let delay = 1; // Start with 1ms delay
         
-        // Poll until setName has been called or timeout is reached
+        // Poll until setName has been called or timeout is reached, we do this because
+        // the alternative is making `getActor` async which might also be a valid option
+        // but since users might be use to a more synchronous nature with DO's I opted for
+        // this method... for the time being. Making `getActor` async would require users
+        // to write `const actor = await MyActor.get('default')` whereas right now the 
+        // `await` keyword is not required.
         while (!this._setNameCalled) {
             const elapsed = Date.now() - startTime;
             if (elapsed > timeout) {
                 throw new Error(`setName() was not called within ${timeout}ms. Actor may not be properly initialized.`);
             }
             
-            // Use exponential backoff, but ensure we don't exceed remaining time
-            const remainingTime = timeout - elapsed;
-            const actualDelay = Math.min(delay, remainingTime);
-            
-            await new Promise(resolve => setTimeout(resolve, actualDelay));
-            
-            // Exponential backoff: double the delay each iteration, cap at 100ms
-            delay = Math.min(delay * 2, 100);
+            await new Promise(resolve => setTimeout(resolve, 0));
         }
     }
     

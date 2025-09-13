@@ -57,7 +57,7 @@ export class Alarms<P extends DurableObject<any>> {
 
         void ctx?.blockConcurrencyWhile(async () => {
             return this._tryCatch(async () => {
-              // Create alarms table if it doesn't exist
+              // Create alarms table if it doesn't exist (without identifier column for backward compatibility)
               ctx?.storage.sql.exec(`
                 CREATE TABLE IF NOT EXISTS _actor_alarms (
                     id TEXT PRIMARY KEY NOT NULL DEFAULT (randomblob(9)),
@@ -67,10 +67,23 @@ export class Alarms<P extends DurableObject<any>> {
                     time INTEGER,
                     delayInSeconds INTEGER,
                     cron TEXT,
-                    identifier TEXT,
                     created_at INTEGER DEFAULT (unixepoch())
                 )
             `);
+
+              // This is part of a migration, we're supporting a new column: `identifier`.
+              // First, check if identifier column exists and add it if needed
+              try {
+                  // Try to query the identifier column to see if it exists
+                  ctx?.storage.sql.exec(`SELECT identifier FROM _actor_alarms LIMIT 1`);
+              } catch (error) {
+                  // If the column doesn't exist, add it
+                  try {
+                      ctx?.storage.sql.exec(`ALTER TABLE _actor_alarms ADD COLUMN identifier TEXT DEFAULT 'default'`);
+                  } catch (addError) {
+                      console.error('Failed to add identifier column:', addError);
+                  }
+              }
       
               // Execute any pending alarms and schedule the next alarm
               await this.alarm();
@@ -255,13 +268,13 @@ export class Alarms<P extends DurableObject<any>> {
     private async _scheduleNextAlarm() {
         // Find the next schedule that needs to be executed
         const result = this.sql`
-          SELECT time, identifier FROM _actor_alarms 
+          SELECT time, COALESCE(identifier, 'default') as identifier FROM _actor_alarms 
           WHERE time > ${Math.floor(Date.now() / 1000)}
           ORDER BY time ASC 
           LIMIT 1
         `;
         if (!result || !this.storage) return;
-    
+
         if (result.length > 0 && "time" in result[0]) {
           const nextTime = (result[0].time as number) * 1000;
           await this.storage.setAlarm(nextTime);
@@ -273,7 +286,7 @@ export class Alarms<P extends DurableObject<any>> {
     
         // Get all schedules that should be executed now
         const result = this.sql<Schedule<string>>`
-          SELECT * FROM _actor_alarms WHERE time <= ${now}
+          SELECT *, COALESCE(identifier, 'default') as identifier FROM _actor_alarms WHERE time <= ${now}
         `;
     
         for (const row of result || []) {
@@ -284,7 +297,7 @@ export class Alarms<P extends DurableObject<any>> {
           }
 
           try {
-            const identifier = row.identifier;
+            const identifier = row.identifier || 'default';
             (this.parent as any).setName(identifier);
           } catch (error) {
             console.error(`error setting identifier`, error);
