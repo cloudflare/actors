@@ -7,7 +7,7 @@ import { Alarms } from "../../../packages/alarms/src";
  * ------------
  * How to test:
  * ------------
- * - Run `npm run cf-typegen && npm install` at the root level of the actor repo
+ * - Run `npm run cf-typegen --workspace examples/playground && npm install` at the root level of the actor repo
  * - Uncomment any of the examples below and run `npm run dev` inside the `examples/playground` folder
  * - Visit https://localhost:5173 to trigger this file
  * 
@@ -105,7 +105,7 @@ export class MyRPCActor extends Actor<Env> {
         super(ctx, env);
     
         this.ctx.blockConcurrencyWhile(async () => {
-            console.log('ID: ', this.identifier)
+            console.log('Name: ', this.name)
         });
     }
 
@@ -141,7 +141,7 @@ export class MyLocationHintActor extends Actor<Env> {
 // Example Actor with storage package interactions
 // -----------------------------------------------
 export class MyStorageActor extends Actor<Env> {
-    static nameFromRequest(request: Request) {
+    static override async nameFromRequest(request: Request): Promise<string | undefined> {
         return "foobar"
     }
 
@@ -172,7 +172,7 @@ export class MyStorageActor extends Actor<Env> {
         // Now we can proceed with querying
         const limit = await this.add(5, 5);
         const query = this.sql`SELECT * FROM sqlite_master LIMIT ${limit};`
-        return new Response(`Identifier (${this.identifier} – ${this.ctx.id.toString()}) = ${JSON.stringify(query)}`)
+        return new Response(`Name (${this.name} – ${this.ctx.id.toString()}) = ${JSON.stringify(query)}`)
     }
 }
 // export default handler(MyStorageActor, {
@@ -193,7 +193,7 @@ export class MyAlarmActor extends Actor<Env> {
     }
 
     // Called from our alarm defined above
-    public async addFromAlarm(a: number, b: number, desc: string): Promise<number> {
+    public async addFromAlarm([a, b, desc]: [number, number, string]): Promise<number> {
         console.log(`Alarm triggered, you can view this alarm in your Worker logs: ${a} + ${b} (desc: ${desc})`);
         return a + b;
     }
@@ -232,7 +232,7 @@ export class MyDurableObject extends DurableObject<Env> {
     }
 
     // Called from our alarm defined above
-    public async addFromAlarm(a: number, b: number): Promise<number> {
+    public async addFromAlarm([a, b]: [number, number]): Promise<number> {
         console.log(`Alarm triggered, you can view this alarm in your Worker logs: ${a} + ${b}`);
         return a + b;
     }
