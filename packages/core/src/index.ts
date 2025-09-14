@@ -6,6 +6,8 @@ import { Persist, PERSISTED_VALUES, initializePersistedProperties, persistProper
 
 export { Persist };
 
+export * from "./retries";
+
 /**
  * Alias type for DurableObjectState to match the adopted Actor nomenclature.
  * This type represents the state of a Durable Object in Cloudflare Workers.
@@ -310,7 +312,7 @@ export abstract class Actor<E> extends DurableObject<E> {
     // Only need to override if you want to handle the socket upgrade yourself.
     // Otherwise this is all handled for you automatically.
     protected onWebSocketUpgrade(request: Request): Response {
-        const client = this.sockets.acceptWebSocket(request);
+        const { client, server } = this.sockets.acceptWebSocket(request);
         
         const response = new Response(null, {
             status: 101,
@@ -319,7 +321,7 @@ export abstract class Actor<E> extends DurableObject<E> {
         
         // Schedule onWebSocketConnect to run after the response is sent
         Promise.resolve().then(() => {
-            this.onWebSocketConnect(client, request);
+            this.onWebSocketConnect(server, request);
         });
 
         return response;

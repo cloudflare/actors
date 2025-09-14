@@ -14,6 +14,7 @@ We are building a full-featured framework that makes developing Cloudflare Durab
 - [Location Placement](./examples/location-placement/) allow you to control the location of your Actor
 - **SQL Migrations** to apply migrations to the SQLite storage
 - **Multiple Alarms** set any number of alarms by timestamp, delay, or cron
+- **Retry utilities** to retry operations using exponential backoff with jitter strategy, and to detect if Durable Object errors are retryable.
 
 And many more features, check out the [Examples](./examples) for more information.
 
