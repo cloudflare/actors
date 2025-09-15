@@ -215,7 +215,7 @@ export abstract class Actor<E> extends DurableObject<E> {
                 throw new Error(`setName() was not called within ${timeout}ms. Actor may not be properly initialized.`);
             }
             
-            await new Promise(resolve => setTimeout(resolve, 0));
+            await scheduler.wait(0);
         }
     }
     
