@@ -95,9 +95,6 @@ export class Sockets<P extends DurableObject<any>> {
         
         // If no ID was provided, generate one
         const connectionId = queryParams.id || crypto.randomUUID();
-        if (!queryParams.id) {
-            queryParams.id = connectionId;
-        }
         
         // Store all query parameters in the WebSocket's attachment to persist across hibernation
         if (server.serializeAttachment) {
