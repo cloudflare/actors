@@ -243,7 +243,7 @@ export abstract class Actor<E> extends DurableObject<E> {
         const url = new URL(request.url);
         const upgradePath = config?.sockets?.upgradePath ?? "/ws";
         if (url.pathname === upgradePath || url.pathname.startsWith(`${upgradePath}/`)) {
-            const shouldUpgrade = this.shouldUpgradeWebSocket(request);
+            const shouldUpgrade = await this.shouldUpgradeWebSocket(request);
             
             // Only continue to upgrade path if shouldUpgrade returns true
             if (shouldUpgrade) {
@@ -303,7 +303,7 @@ export abstract class Actor<E> extends DurableObject<E> {
         return Promise.resolve(new Response("Not Found", { status: 404 }));
     }
 
-    protected shouldUpgradeWebSocket(request: Request): boolean {
+    protected async shouldUpgradeWebSocket(request: Request): Promise<boolean> {
         // By default we do not want to assume every application needs to use sockets
         // and we do not want to upgrade every request to a socket.
         return false;
