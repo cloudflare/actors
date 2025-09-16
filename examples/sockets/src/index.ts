@@ -18,7 +18,7 @@ export class MySocketsActor extends Actor<Env> {
         return Promise.resolve(Response.json({ message: 'Hello, World!' }));
     }
 
-    protected shouldUpgradeSocket(request: Request): boolean {
+    protected async shouldUpgradeWebSocket(request: Request): Promise<boolean> {
         return true;
     }
 
