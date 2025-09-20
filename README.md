@@ -55,7 +55,7 @@ Notice the code class name in your Typescript implementation must match the bind
 import { Actor, handler } from "@cloudflare/actors";
 
 export class MyActor extends Actor<Env> {
-  async fetch(request: Request): Promise<Response> {
+  async onRequest(request: Request): Promise<Response> {
     return new Response("Hello, World!");
   }
 }
