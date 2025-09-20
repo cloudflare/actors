@@ -1,6 +1,8 @@
 import type { DurableObjectStorage } from "@cloudflare/workers-types";
 import { SQLSchemaMigration, SQLSchemaMigrations } from "./sql-schema-migrations";
 
+export type { SQLSchemaMigration };
+
 /**
  * Represents a single SQL query request with optional parameters.
  */
