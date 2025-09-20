@@ -65,7 +65,7 @@ export default handler(MyActor);
 
 ### Step 4: Deploy
 ```curl
-npm i && npm run deploy
+npm run deploy
 ```
 
 ## Examples
