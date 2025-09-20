@@ -63,6 +63,11 @@ export class MyActor extends Actor<Env> {
 export default handler(MyActor);
 ```
 
+### Step 4: Deploy
+```curl
+npm i && npm run deploy
+```
+
 ## Examples
 
 - [Basic Example](./examples/basic)
