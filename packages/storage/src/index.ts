@@ -152,23 +152,14 @@ export class Storage {
      * @param opts - Options containing the SQL query, parameters, and result format preference
      * @returns Promise resolving to either raw query results or formatted array
      */
-    private async query(sql: string, params?: unknown[], isRaw?: boolean) {
+    private async query<T = Record<string, string | number | boolean | null>>(
+        sql: string, params?: unknown[]
+    ) {
         // Now proceed with executing the query
-        const cursor = await this.executeRawQuery({ sql, params })
-        if (!cursor) return []
+        const cursor = await this.executeRawQuery({ sql, params });
+        if (!cursor) return [] as T[];
 
-        if (isRaw) {
-            return {
-                columns: cursor.columnNames,
-                rows: Array.from(cursor.raw()),
-                meta: {
-                    rows_read: cursor.rowsRead,
-                    rows_written: cursor.rowsWritten,
-                },
-            }
-        }
-
-        return cursor.toArray()
+        return cursor.toArray() as T[];
     }
 
     async runMigrations() {
