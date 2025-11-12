@@ -107,10 +107,11 @@ export abstract class Actor<E> extends DurableObject<E> {
 
     /**
      * Static method to configure the actor.
-     * @param options 
-     * @returns 
+     * Subclasses can override this to customize upgrade paths or other options.
+     * @param request - Incoming request (optional for subclasses that need context)
+     * @returns Actor configuration values
      */
-    static configuration = (request: Request): ActorConfiguration => {
+    static configuration(request?: Request): ActorConfiguration {
         return { 
             locationHint: undefined, 
             sockets: { 
@@ -237,7 +238,8 @@ export abstract class Actor<E> extends DurableObject<E> {
     async fetch(request: Request): Promise<Response> {
         // If the request route is `/ws` then we should upgrade the connection to a WebSocket
         // Get configuration from the static property
-        const config = (this.constructor as typeof Actor).configuration(request);
+        const ActorClass = this.constructor as typeof Actor;
+        const config = ActorClass.configuration(request);
         
         // Parse the URL to check if the path component matches the upgradePath
         const url = new URL(request.url);
@@ -562,7 +564,8 @@ export function getActor<T extends Actor<any>>(
 ): DurableObjectStub<T> {
     const className = ActorClass.name;
     const envObj = env as unknown as Record<string, DurableObjectNamespace>;
-    const locationHint = (ActorClass as any).configuration().locationHint;
+    const actorConfig = (ActorClass as unknown as typeof Actor).configuration();
+    const locationHint = actorConfig.locationHint;
     
     const bindingName = Object.keys(envObj).find(key => {
         const binding = (env as any).__DURABLE_OBJECT_BINDINGS?.[key];
