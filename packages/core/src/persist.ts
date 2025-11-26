@@ -77,16 +77,12 @@ function createDeepProxy(value: any, instance: any, propertyKey: string, trigger
                 }
                 
                 const prop = Reflect.get(target, key);
-                
-                // If the property is null or undefined but is being accessed as an object,
-                // automatically convert it to an object
-                if ((prop === null || prop === undefined) && 
-                    typeof key === 'string' && 
-                    !key.startsWith('_') && 
-                    key !== 'length') {
-                    const newObj = {};
-                    Reflect.set(target, key, newObj);
-                    return createDeepProxy(newObj, instance, propertyKey, triggerPersist);
+
+                // Return null/undefined as-is - these are intentional values
+                // Do NOT auto-vivify on read operations as this mutates the
+                // underlying object and corrupts domain values
+                if (prop === null || prop === undefined) {
+                    return prop;
                 }
                 
                 // Special handling for array methods that modify the array
