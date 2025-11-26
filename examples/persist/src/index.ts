@@ -6,13 +6,17 @@ import { Actor, handler, Persist } from '../../../packages/core/src'
 export class MyPersistActor extends Actor<Env> {
     @Persist
     public myCustomNumber: number = 0;
-    
+
     @Persist
     public myCustomObject: Record<string, any> = {
         customKey: {
             customDeepKey: []
         }
     };
+
+    // Nullable fields are preserved correctly - reading them returns null, not {}
+    @Persist
+    public optionalOwner: string | null = null;
 
     static async nameFromRequest(request: Request): Promise<string | undefined> {
         // Pause for 500 milliseconds to mimic async operation
@@ -26,6 +30,7 @@ export class MyPersistActor extends Actor<Env> {
         // you could use this as a replacement to `constructor`.
         console.log('Previous value: ', this.myCustomNumber);
         console.log('Previous object: ', JSON.stringify(this.myCustomObject));
+        console.log('Optional owner: ', this.optionalOwner); // null is preserved, not converted to {}
     }
 
     async fetch(request: Request): Promise<Response> {
