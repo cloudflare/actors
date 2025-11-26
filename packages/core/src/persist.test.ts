@@ -95,4 +95,41 @@ describe("persist proxy - null auto-vivification bug", () => {
     expect(matchState.firstMoveMadeAt).toBe(null);
     expect(matchState.completedAt).toBe(null);
   });
+
+  it("should preserve undefined values without mutation", () => {
+    const original = {
+      definedProp: undefined as string | undefined,
+      anotherProp: "value",
+    };
+
+    const proxied = createTestProxy(original);
+
+    // Read the undefined property
+    const value = proxied.definedProp;
+
+    // Should return undefined as-is without mutation
+    expect(value).toBe(undefined);
+    expect(original.definedProp).toBe(undefined);
+  });
+
+  it("should preserve falsy but valid values (0, false, empty string)", () => {
+    const original = {
+      zero: 0,
+      falseValue: false,
+      emptyString: "",
+    };
+
+    const proxied = createTestProxy(original);
+
+    // All falsy values should pass through unchanged
+    expect(proxied.zero).toBe(0);
+    expect(proxied.falseValue).toBe(false);
+    expect(proxied.emptyString).toBe("");
+
+    // Original should remain unchanged
+    expect(original.zero).toBe(0);
+    expect(original.falseValue).toBe(false);
+    expect(original.emptyString).toBe("");
+  });
+
 });
