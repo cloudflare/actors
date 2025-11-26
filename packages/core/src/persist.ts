@@ -123,10 +123,10 @@ function createDeepProxy(value: any, instance: any, propertyKey: string, trigger
                 return prop;
             } catch (e) {
                 console.error(`Error accessing property ${String(key)}:`, e);
-                // Return an empty object proxy for error recovery
-                const newObj = {};
-                Reflect.set(target, key, newObj);
-                return createDeepProxy(newObj, instance, propertyKey, triggerPersist);
+                // Return undefined on error - don't auto-vivify as it causes:
+                // 1. Silent data corruption (replaces original value with {})
+                // 2. Infinite proxy recursion leading to heap overflow
+                return undefined;
             }
         },
         set(target, key, newValue) {
@@ -514,6 +514,11 @@ function safeParse(json: string): any {
         return value;
     });
 }
+
+// Test exports - expose internal functions for unit testing
+export const __test = {
+    createDeepProxy,
+};
 
 /**
  * Helper function to persist a property value to storage.
