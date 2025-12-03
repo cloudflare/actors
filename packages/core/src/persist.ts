@@ -1,4 +1,4 @@
-import { ActorState } from './index';
+import { ActorState } from './index.js';
 
 // Symbol to store persisted property metadata
 export const PERSISTED_PROPERTIES = Symbol('PERSISTED_PROPERTIES');

@@ -1,12 +1,12 @@
 import { env, DurableObject, WorkerEntrypoint } from "cloudflare:workers";
-import { Storage } from "../../storage/src/index";
-import { Alarms } from "../../alarms/src/index";
-import { Sockets } from "../../sockets/src/index";
-import { Persist, PERSISTED_VALUES, initializePersistedProperties, persistProperty } from "./persist";
+import { Storage } from "../../storage/src/index.js";
+import { Alarms } from "../../alarms/src/index.js";
+import { Sockets } from "../../sockets/src/index.js";
+import { Persist, PERSISTED_VALUES, initializePersistedProperties, persistProperty } from "./persist.js";
 
 export { Persist };
 
-export * from "./retries";
+export * from "./retries.js";
 
 /**
  * Alias type for DurableObjectState to match the adopted Actor nomenclature.
