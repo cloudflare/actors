@@ -1,0 +1,76 @@
+name: Test
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # Discover packages that have test directories
+  discover:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    outputs:
+      packages: ${{ steps.find-packages.outputs.packages }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Find packages with tests
+        id: find-packages
+        run: |
+          # Find all packages that have a test directory or test files
+          packages=$(find packages -maxdepth 2 -type d -name "test" | sed 's|packages/||' | sed 's|/test||' | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          
+          # If no test directories found, check for *.test.ts files in src
+          if [ "$packages" = "[]" ]; then
+            packages=$(find packages -maxdepth 3 -name "*.test.ts" | sed 's|packages/||' | cut -d'/' -f1 | sort -u | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          else
+            # Also include packages with *.test.ts files in src
+            src_packages=$(find packages -maxdepth 3 -name "*.test.ts" | sed 's|packages/||' | cut -d'/' -f1 | sort -u)
+            if [ -n "$src_packages" ]; then
+              all_packages=$(echo -e "$packages\n$src_packages" | tr -d '[]"' | tr ',' '\n' | sort -u | jq -R -s -c 'split("\n") | map(select(length > 0))')
+              packages="$all_packages"
+            fi
+          fi
+          
+          echo "packages=$packages" >> $GITHUB_OUTPUT
+          echo "Found packages with tests: $packages"
+
+  test:
+    permissions:
+      contents: read
+    needs: discover
+    if: ${{ needs.discover.outputs.packages != '[]' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJson(needs.discover.outputs.packages) }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "23.x"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install rollup linux binary
+        run: npm install @rollup/rollup-linux-x64-gnu --no-save
+
+      - name: Build
+        run: npm run build
+
+      - name: Run tests for ${{ matrix.package }}
+        run: npm run test --workspace=packages/${{ matrix.package }}
