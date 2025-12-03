@@ -12,6 +12,8 @@ on:
 jobs:
   # Discover packages that have test directories
   discover:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     outputs:
       packages: ${{ steps.find-packages.outputs.packages }}
@@ -41,6 +43,8 @@ jobs:
           echo "Found packages with tests: $packages"
 
   test:
+    permissions:
+      contents: read
     needs: discover
     if: ${{ needs.discover.outputs.packages != '[]' }}
     runs-on: ubuntu-latest
