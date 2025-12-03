@@ -1,0 +1,26 @@
+{
+	"$schema": "../../node_modules/wrangler/config-schema.json",
+	"name": "actor-pubsub",
+	"main": "src/index.ts",
+	"compatibility_date": "2025-05-20",
+    "compatibility_flags": [],
+	"migrations": [
+		{
+			"new_sqlite_classes": [
+				"PubSubService"
+			],
+			"tag": "v1"
+		}
+	],
+	"durable_objects": {
+		"bindings": [
+			{
+				"class_name": "PubSubService",
+				"name": "PubSubService"
+			}
+		]
+	},
+	"observability": {
+		"enabled": true
+	}
+}
