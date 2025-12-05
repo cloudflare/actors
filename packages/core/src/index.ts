@@ -2,7 +2,7 @@ import { env, DurableObject, WorkerEntrypoint } from "cloudflare:workers";
 import { Storage } from "../../storage/src/index";
 import { Alarms } from "../../alarms/src/index";
 import { Sockets } from "../../sockets/src/index";
-import { Persist, PERSISTED_VALUES, initializePersistedProperties, persistProperty } from "./persist";
+import { Persist, PERSISTED_VALUES, initializePersistedProperties, persistProperty, unwrapProxy } from "./persist";
 
 export { Persist };
 
@@ -183,8 +183,43 @@ export abstract class Actor<E> extends DurableObject<E> {
         if (!this.name) {
             this._name = DEFAULT_ACTOR_NAME;
         }
+
+        // Wrap RPC methods to unwrap proxy values for serialization
+        this._wrapMethodsForRpc();
     }
-    
+
+    /**
+     * Wraps all public methods to unwrap proxy return values for RPC serialization.
+     * @private
+     */
+    private _wrapMethodsForRpc(): void {
+        const skipMethods = new Set([
+            'constructor', '_wrapMethodsForRpc', '_initializePersistedProperties',
+            '_waitForSetName', '_persistProperty', 'setName'
+        ]);
+
+        let proto = Object.getPrototypeOf(this);
+        while (proto && proto !== Object.prototype) {
+            for (const name of Object.getOwnPropertyNames(proto)) {
+                if (skipMethods.has(name) || name.startsWith('_')) continue;
+
+                const descriptor = Object.getOwnPropertyDescriptor(proto, name);
+                if (!descriptor || typeof descriptor.value !== 'function') continue;
+
+                const original = descriptor.value;
+                const self = this;
+                (this as Record<string, unknown>)[name] = function(...args: unknown[]) {
+                    const result = original.apply(self, args);
+                    if (result instanceof Promise) {
+                        return result.then((v: unknown) => unwrapProxy(v));
+                    }
+                    return unwrapProxy(result);
+                };
+            }
+            proto = Object.getPrototypeOf(proto);
+        }
+    }
+
     /**
      * Initializes the persisted properties table and loads any stored values.
      * This is called during construction to ensure properties are loaded before any code uses them.
