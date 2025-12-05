@@ -9,7 +9,9 @@ describe("unwrapProxy", () => {
       const result = unwrapProxy(malicious);
 
       expect(result.safe).toBe(1);
-      expect(result.__proto__).toBeUndefined();
+      // Malicious __proto__ value not copied as own property
+      expect(Object.prototype.hasOwnProperty.call(result, '__proto__')).toBe(false);
+      // Global Object.prototype not polluted
       expect(({} as Record<string, unknown>).polluted).toBeUndefined();
     });
 
@@ -18,7 +20,10 @@ describe("unwrapProxy", () => {
       const result = unwrapProxy(malicious);
 
       expect(result.safe).toBe(1);
-      expect(result.constructor).toBeUndefined();
+      // Malicious constructor value not copied as own property
+      expect(Object.prototype.hasOwnProperty.call(result, 'constructor')).toBe(false);
+      // Inherited constructor is standard Object constructor
+      expect(result.constructor).toBe(Object);
     });
 
     it("ignores prototype key in proxied objects", () => {
@@ -40,14 +45,15 @@ describe("unwrapProxy", () => {
 
       expect(result.safe).toBe(1);
       expect(result.nested.valid).toBe(2);
-      expect(result.nested.__proto__).toBeUndefined();
+      // Malicious __proto__ value not copied as own property
+      expect(Object.prototype.hasOwnProperty.call(result.nested, '__proto__')).toBe(false);
     });
 
-    it("proxied object result has null prototype", () => {
+    it("proxied object result has standard prototype", () => {
       const input = { a: 1, [IS_PROXIED]: true };
       const result = unwrapProxy(input);
 
-      expect(Object.getPrototypeOf(result)).toBeNull();
+      expect(Object.getPrototypeOf(result)).toBe(Object.prototype);
     });
 
     it("non-proxied objects returned unchanged (fast path)", () => {
@@ -64,7 +70,7 @@ describe("unwrapProxy", () => {
 
       expect(result).not.toBe(input);
       expect(result.outer.inner.val).toBe(1);
-      expect(Object.getPrototypeOf(result)).toBeNull();
+      expect(Object.getPrototypeOf(result)).toBe(Object.prototype);
     });
 
     it("non-proxied array returned unchanged", () => {

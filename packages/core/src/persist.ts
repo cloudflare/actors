@@ -114,7 +114,7 @@ export function unwrapProxy<T>(value: T, seen = new WeakMap<object, unknown>()):
         return result as T;
     }
 
-    const result = Object.create(null) as Record<string, unknown>;
+    const result: Record<string, unknown> = {};
     seen.set(value, result);
     for (const key of Object.keys(value)) {
         if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue;
