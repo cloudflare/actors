@@ -238,6 +238,12 @@ export abstract class Actor<E> extends DurableObject<E> {
         // If the request route is `/ws` then we should upgrade the connection to a WebSocket
         // Get configuration from the static property
         const config = (this.constructor as typeof Actor).configuration(request);
+
+        // Autoresponse in sockets allows clients to send a ping message and receive a pong response
+        // without waking the durable object up from hibernation.
+        if (config?.sockets?.autoResponse) {
+            this.ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair(config.sockets.autoResponse.ping, config.sockets.autoResponse.pong));
+        }
         
         // Parse the URL to check if the path component matches the upgradePath
         const url = new URL(request.url);
@@ -249,12 +255,6 @@ export abstract class Actor<E> extends DurableObject<E> {
             if (shouldUpgrade) {
                 return Promise.resolve(this.onWebSocketUpgrade(request));
             }
-        }
-
-        // Autoresponse in sockets allows clients to send a ping message and receive a pong response
-        // without waking the durable object up from hibernation.
-        if (config?.sockets?.autoResponse) {
-            this.ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair(config.sockets.autoResponse.ping, config.sockets.autoResponse.pong));
         }
 
         // Wait for setName to be called before running onRequest
