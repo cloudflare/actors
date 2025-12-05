@@ -16,6 +16,114 @@ export type Constructor<T = any> = {
 };
 
 /**
+ * Checks if a value contains any proxied objects (marked with IS_PROXIED symbol).
+ * Used to short-circuit unwrapProxy when no proxy is present.
+ * @internal
+ */
+function containsProxy(value: unknown, seen = new WeakSet<object>()): boolean {
+    if (value === null || value === undefined || typeof value !== 'object') {
+        return false;
+    }
+    if (value instanceof Date || value instanceof RegExp || value instanceof Error) {
+        return false;
+    }
+    if (seen.has(value)) {
+        return false;
+    }
+    seen.add(value);
+
+    // Check if this object is proxied
+    try {
+        if ((value as Record<symbol, unknown>)[IS_PROXIED] === true) {
+            return true;
+        }
+    } catch {
+        // Ignore errors from accessing symbol on exotic objects
+    }
+
+    if (Array.isArray(value)) {
+        return value.some(v => containsProxy(v, seen));
+    }
+    if (value instanceof Map) {
+        for (const v of value.values()) {
+            if (containsProxy(v, seen)) return true;
+        }
+        return false;
+    }
+    if (value instanceof Set) {
+        for (const v of value) {
+            if (containsProxy(v, seen)) return true;
+        }
+        return false;
+    }
+
+    for (const key of Object.keys(value)) {
+        if (containsProxy((value as Record<string, unknown>)[key], seen)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Recursively unwraps proxy objects to get raw data for RPC serialization.
+ * Handles circular references by tracking visited objects.
+ * @internal
+ */
+export function unwrapProxy<T>(value: T, seen = new WeakMap<object, unknown>()): T {
+    if (value === null || value === undefined || typeof value !== 'object') {
+        return value;
+    }
+    if (value instanceof Date || value instanceof RegExp || value instanceof Error) {
+        return value;
+    }
+
+    // Fast path: if no proxy detected in value tree, return original unchanged
+    if (!containsProxy(value)) {
+        return value;
+    }
+
+    // Handle circular references
+    const cached = seen.get(value);
+    if (cached !== undefined) {
+        return cached as T;
+    }
+
+    if (Array.isArray(value)) {
+        const result: unknown[] = [];
+        seen.set(value, result);
+        for (let i = 0; i < value.length; i++) {
+            result[i] = unwrapProxy(value[i], seen);
+        }
+        return result as T;
+    }
+    if (value instanceof Map) {
+        const result = new Map();
+        seen.set(value, result);
+        for (const [k, v] of value) {
+            result.set(k, unwrapProxy(v, seen));
+        }
+        return result as T;
+    }
+    if (value instanceof Set) {
+        const result = new Set();
+        seen.set(value, result);
+        for (const v of value) {
+            result.add(unwrapProxy(v, seen));
+        }
+        return result as T;
+    }
+
+    const result = Object.create(null) as Record<string, unknown>;
+    seen.set(value, result);
+    for (const key of Object.keys(value)) {
+        if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue;
+        result[key] = unwrapProxy((value as Record<string, unknown>)[key], seen);
+    }
+    return result as T;
+}
+
+/**
  * Creates a deep proxy for objects to track nested property changes
  * @param value The value to potentially proxy
  * @param instance The Actor instance
@@ -57,12 +165,18 @@ function createDeepProxy(value: any, instance: any, propertyKey: string, trigger
             if (key === IS_PROXIED) return true;
             
             // Handle special cases and built-in methods
-            if (typeof key === 'symbol' || 
-                key === 'toString' || 
-                key === 'valueOf' || 
+            if (typeof key === 'symbol' ||
+                key === 'toString' ||
+                key === 'valueOf' ||
                 key === 'constructor' ||
-                key === 'toJSON') {
+                key === '__proto__' ||
+                key === 'prototype') {
                 return Reflect.get(target, key);
+            }
+
+            // Provide toJSON to enable RPC serialization
+            if (key === 'toJSON') {
+                return () => unwrapProxy(target);
             }
             
             try {
@@ -141,14 +255,17 @@ function createDeepProxy(value: any, instance: any, propertyKey: string, trigger
                 const currentValue = Reflect.get(target, key);
                 
                 // Handle different type transition scenarios
-                if (currentValue !== null && 
-                    typeof currentValue === 'object' && 
-                    newValue !== null && 
-                    typeof newValue === 'object' && 
-                    !Array.isArray(currentValue) && 
+                if (currentValue !== null &&
+                    typeof currentValue === 'object' &&
+                    newValue !== null &&
+                    typeof newValue === 'object' &&
+                    !Array.isArray(currentValue) &&
                     !Array.isArray(newValue)) {
                     // Case 1: Both values are objects - merge them instead of replacing
-                    Object.assign(currentValue, newValue);
+                    for (const k of Object.keys(newValue)) {
+                        if (k === '__proto__' || k === 'constructor' || k === 'prototype') continue;
+                        (currentValue as Record<string, unknown>)[k] = (newValue as Record<string, unknown>)[k];
+                    }
                 } else if (newValue !== null && typeof newValue === 'object' && !Object.isFrozen(newValue)) {
                     // Case 2: New value is an object but current value is not (or doesn't exist)
                     // Create a new proxied object
