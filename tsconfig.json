@@ -11,8 +11,10 @@
 		"sourceMap": true,
 		"outDir": "dist",
 		"rootDir": ".",
-		"composite": true,
 		"types": ["@cloudflare/workers-types"]
 	},
-	"exclude": ["node_modules", "dist"]
+	"include": [
+		"packages/*/src/**/*.ts"
+	],
+	"exclude": ["node_modules", "dist", "**/*.test.ts"]
 }
