@@ -48,9 +48,7 @@ const TRACKING_ACTOR_NAME = "_cf_actors";
  * Base abstract class for Workers that provides common functionality and structure.
  * @template T - The type of the environment object that will be available to the worker
  */
-export abstract class Entrypoint<T> extends WorkerEntrypoint {
-    protected env!: T;
-    protected ctx!: ExecutionContext;
+export abstract class Entrypoint<T> extends WorkerEntrypoint<T> {
     abstract fetch(request: Request): Promise<Response>;
 }
 
