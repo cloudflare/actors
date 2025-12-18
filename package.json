@@ -16,9 +16,15 @@
     "types": "./dist/core/src/index.d.ts",
     "typesVersions": {
         "*": {
-            ".": ["./dist/core/src/index.d.ts"],
-            "storage": ["./dist/storage/src/index.d.ts"],
-            "alarms": ["./dist/alarms/src/index.d.ts"]
+            ".": [
+                "./dist/core/src/index.d.ts"
+            ],
+            "storage": [
+                "./dist/storage/src/index.d.ts"
+            ],
+            "alarms": [
+                "./dist/alarms/src/index.d.ts"
+            ]
         }
     },
     "files": [
@@ -30,7 +36,11 @@
         "cf-typegen": "wrangler types",
         "build": "tsc -p ./packages",
         "dev": "vite",
-        "clean": "rm -rf dist .wrangler worker-configuration.d.ts"
+        "clean": "rm -rf dist .wrangler worker-configuration.d.ts",
+        "test": "vitest",
+        "test:run": "vitest run",
+        "test:ui": "vitest --ui",
+        "sync:versions": "syncpack fix-mismatches"
     },
     "engines": {
         "node": ">=18.0.0"
@@ -54,8 +64,13 @@
     },
     "devDependencies": {
         "@cloudflare/vite-plugin": "1.12.3",
+        "@cloudflare/vitest-pool-workers": "^0.10.15",
+        "@cloudflare/workers-types": "^4.20251213.0",
+        "@vitest/ui": "^3.2.4",
+        "syncpack": "^13.0.4",
         "typescript": "^5.5.2",
         "vite": "^6.3.5",
+        "vitest": "^3.2.4",
         "wrangler": "^4.34.0"
     }
 }
