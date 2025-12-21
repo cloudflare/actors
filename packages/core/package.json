@@ -1,21 +1,21 @@
 {
-    "name": "actor-core",
-    "private": true,
-    "version": "0.0.0",
-    "main": "../../dist/core/index.js",
-    "types": "../../dist/core/index.d.ts",
-    "scripts": {
-        "build": "tsc -p .",
-        "test": "vitest --run"
-    },
-    "dependencies": {
-        "actor-storage": "0.0.0"
-    },
-    "devDependencies": {
-        "@cloudflare/vite-plugin": "1.12.3",
-        "typescript": "^5.5.2",
-        "vite": "^6.3.5",
-        "vitest": "^3.2.4",
-        "wrangler": "^4.34.0"
-    }
+	"name": "actor-core",
+	"private": true,
+	"version": "0.0.0",
+	"main": "../../dist/core/index.js",
+	"types": "../../dist/core/index.d.ts",
+	"scripts": {
+		"build": "tsc -p .",
+		"test": "vitest --run"
+	},
+	"dependencies": {
+		"actor-storage": "0.0.0"
+	},
+	"devDependencies": {
+		"@cloudflare/vite-plugin": "1.12.3",
+		"typescript": "^5.5.2",
+		"vite": "^6.3.5",
+		"vitest": "^3.2.4",
+		"wrangler": "^4.34.0"
+	}
 }

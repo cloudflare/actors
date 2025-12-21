@@ -1,17 +1,17 @@
 {
-    "name": "@cloudflare/actors-example-location-placement",
-    "private": true,
-    "type": "module",  
-    "scripts": {
-        "dev": "vite",
-        "build": "vite build",
-        "deploy": "wrangler deploy",
-        "cf-typegen": "wrangler types"
-    },
-    "keywords": [],
-    "author": "",
-    "dependencies": {
-        "@cloudflare/vite-plugin": "^1.12.3",
-        "vite": "^6.3.5"
-    }
+	"name": "@cloudflare/actors-example-location-placement",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "vite",
+		"build": "vite build",
+		"deploy": "wrangler deploy",
+		"cf-typegen": "wrangler types"
+	},
+	"keywords": [],
+	"author": "",
+	"dependencies": {
+		"@cloudflare/vite-plugin": "^1.12.3",
+		"vite": "^6.3.5"
+	}
 }

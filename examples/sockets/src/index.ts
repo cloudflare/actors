@@ -1,39 +1,43 @@
-import { Actor, ActorConfiguration, handler } from '../../../packages/core/src'
+import {
+	Actor,
+	type ActorConfiguration,
+	handler,
+} from "../../../packages/core/src";
 
 export class MySocketsActor extends Actor<Env> {
-    // This is optional to implement, defaults are shown in below comments
-    static configuration(request: Request): ActorConfiguration {
-        return {
-            sockets: {
-                upgradePath: '/ws', // Also defaults to `/ws` when not present,
-                autoResponse: {
-                    ping: 'ping',
-                    pong: 'pong'
-                }
-            }
-        };
-    }
+	// This is optional to implement, defaults are shown in below comments
+	static configuration(_request: Request): ActorConfiguration {
+		return {
+			sockets: {
+				upgradePath: "/ws", // Also defaults to `/ws` when not present,
+				autoResponse: {
+					ping: "ping",
+					pong: "pong",
+				},
+			},
+		};
+	}
 
-    protected onRequest(request: Request): Promise<Response> {
-        return Promise.resolve(Response.json({ message: 'Hello, World!' }));
-    }
+	protected onRequest(_request: Request): Promise<Response> {
+		return Promise.resolve(Response.json({ message: "Hello, World!" }));
+	}
 
-    protected async shouldUpgradeWebSocket(request: Request): Promise<boolean> {
-        return true;
-    }
+	protected async shouldUpgradeWebSocket(_request: Request): Promise<boolean> {
+		return true;
+	}
 
-    protected onWebSocketConnect(ws: WebSocket, request: Request) {
-        console.log('Socket connected');
-    }
+	protected onWebSocketConnect(_ws: WebSocket, _request: Request) {
+		console.log("Socket connected");
+	}
 
-    protected onWebSocketDisconnect(ws: WebSocket) {
-        console.log('Socket disconnected');
-    }
+	protected onWebSocketDisconnect(_ws: WebSocket) {
+		console.log("Socket disconnected");
+	}
 
-    protected onWebSocketMessage(ws: WebSocket, message: any) {
-        // Echo message back to everyone except the sender
-        this.sockets.message('Received!', '*', [ws]);
-    }
+	protected onWebSocketMessage(ws: WebSocket, _message: any) {
+		// Echo message back to everyone except the sender
+		this.sockets.message("Received!", "*", [ws]);
+	}
 }
 
 export default handler(MySocketsActor);

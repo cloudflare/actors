@@ -1,61 +1,69 @@
 {
-    "name": "@cloudflare/actors",
-    "version": "0.0.1-beta.6",
-    "description": "An easier way to build with Cloudflare Durable Objects",
-    "type": "module",
-    "main": "./dist/index.js",
-    "workspaces": [
-        "packages/*",
-        "examples/*"
-    ],
-    "exports": {
-        ".": "./dist/core/src/index.js",
-        "./storage": "./dist/storage/src/index.js",
-        "./alarms": "./dist/alarms/src/index.js"
-    },
-    "types": "./dist/core/src/index.d.ts",
-    "typesVersions": {
-        "*": {
-            ".": ["./dist/core/src/index.d.ts"],
-            "storage": ["./dist/storage/src/index.d.ts"],
-            "alarms": ["./dist/alarms/src/index.d.ts"]
-        }
-    },
-    "files": [
-        "dist"
-    ],
-    "sideEffects": false,
-    "scripts": {
-        "deploy": "wrangler deploy",
-        "cf-typegen": "wrangler types",
-        "build": "tsc -p ./packages",
-        "dev": "vite",
-        "clean": "rm -rf dist .wrangler worker-configuration.d.ts"
-    },
-    "engines": {
-        "node": ">=18.0.0"
-    },
-    "keywords": [
-        "cloudflare",
-        "workers",
-        "actor",
-        "framework",
-        "distributed-systems"
-    ],
-    "author": "Cloudflare",
-    "license": "MIT",
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/cloudflare/actors"
-    },
-    "optionalDependencies": {
-        "cron-schedule": "^5.0.4",
-        "nanoid": "^5.1.5"
-    },
-    "devDependencies": {
-        "@cloudflare/vite-plugin": "1.12.3",
-        "typescript": "^5.5.2",
-        "vite": "^6.3.5",
-        "wrangler": "^4.34.0"
-    }
+	"name": "@cloudflare/actors",
+	"version": "0.0.1-beta.6",
+	"description": "An easier way to build with Cloudflare Durable Objects",
+	"type": "module",
+	"main": "./dist/index.js",
+	"workspaces": [
+		"packages/*",
+		"examples/*"
+	],
+	"exports": {
+		".": "./dist/core/src/index.js",
+		"./storage": "./dist/storage/src/index.js",
+		"./alarms": "./dist/alarms/src/index.js"
+	},
+	"types": "./dist/core/src/index.d.ts",
+	"typesVersions": {
+		"*": {
+			".": [
+				"./dist/core/src/index.d.ts"
+			],
+			"storage": [
+				"./dist/storage/src/index.d.ts"
+			],
+			"alarms": [
+				"./dist/alarms/src/index.d.ts"
+			]
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"sideEffects": false,
+	"scripts": {
+		"deploy": "wrangler deploy",
+		"cf-typegen": "wrangler types",
+		"build": "tsc -p ./packages",
+		"dev": "vite",
+		"clean": "rm -rf dist .wrangler worker-configuration.d.ts",
+		"check": "biome check .",
+		"lint:fix": "biome check . --write --unsafe"
+	},
+	"engines": {
+		"node": ">=18.0.0"
+	},
+	"keywords": [
+		"cloudflare",
+		"workers",
+		"actor",
+		"framework",
+		"distributed-systems"
+	],
+	"author": "Cloudflare",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/cloudflare/actors"
+	},
+	"optionalDependencies": {
+		"cron-schedule": "^5.0.4",
+		"nanoid": "^5.1.5"
+	},
+	"devDependencies": {
+		"@cloudflare/vite-plugin": "1.12.3",
+		"typescript": "^5.5.2",
+		"vite": "^6.3.5",
+		"wrangler": "^4.34.0"
+	}
 }

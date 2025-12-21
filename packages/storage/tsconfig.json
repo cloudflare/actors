@@ -1,11 +1,11 @@
 {
-    "extends": "../../tsconfig.json",
-    "compilerOptions": {
-      "outDir": "../../dist/storage",
-      "rootDir": ".",
-      "composite": true,
-      "types": ["@cloudflare/vitest-pool-workers", "./cloudflare-test"]
-    },
-    "include": ["**/*.ts"],
-    "references": []
-  }
+	"extends": "../../tsconfig.json",
+	"compilerOptions": {
+		"outDir": "../../dist/storage",
+		"rootDir": ".",
+		"composite": true,
+		"types": ["@cloudflare/vitest-pool-workers", "./cloudflare-test"]
+	},
+	"include": ["**/*.ts"],
+	"references": []
+}

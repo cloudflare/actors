@@ -3,12 +3,10 @@
 	"name": "actor-lifecycle-hooks",
 	"main": "src/index.ts",
 	"compatibility_date": "2025-05-20",
-    "compatibility_flags": [],
+	"compatibility_flags": [],
 	"migrations": [
 		{
-			"new_sqlite_classes": [
-				"MyActor",
-			],
+			"new_sqlite_classes": ["MyActor"],
 			"tag": "v1"
 		}
 	],

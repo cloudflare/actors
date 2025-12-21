@@ -1,10 +1,10 @@
 {
-    "extends": "../../tsconfig.json",
-    "compilerOptions": {
-      "outDir": "../../dist/sockets",
-      "rootDir": ".",
-      "composite": true
-    },
-    "include": ["**/*.ts"],
-    "references": [{ "path": "../core" }]
-  }
+	"extends": "../../tsconfig.json",
+	"compilerOptions": {
+		"outDir": "../../dist/sockets",
+		"rootDir": ".",
+		"composite": true
+	},
+	"include": ["**/*.ts"],
+	"references": [{ "path": "../core" }]
+}

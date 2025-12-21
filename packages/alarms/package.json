@@ -1,20 +1,20 @@
 {
-    "name": "actor-alarms",
-    "private": true,
-    "version": "0.0.0",
-    "main": "../../dist/alarms/src/index.js",
-    "types": "../../dist/alarms/src/index.d.ts",
-    "scripts": {
-      "build": "tsc -p ."
-    },
-    "peerDependencies": {
-      "cron-schedule": "^5.0.4",
-      "nanoid": "^5.1.5"
-    },
-    "devDependencies": {
-        "@cloudflare/vite-plugin": "1.12.3",
-      "typescript": "^5.5.2",
-      "vite": "^6.3.5",
-      "wrangler": "^4.16.0"
+	"name": "actor-alarms",
+	"private": true,
+	"version": "0.0.0",
+	"main": "../../dist/alarms/src/index.js",
+	"types": "../../dist/alarms/src/index.d.ts",
+	"scripts": {
+		"build": "tsc -p ."
+	},
+	"peerDependencies": {
+		"cron-schedule": "^5.0.4",
+		"nanoid": "^5.1.5"
+	},
+	"devDependencies": {
+		"@cloudflare/vite-plugin": "1.12.3",
+		"typescript": "^5.5.2",
+		"vite": "^6.3.5",
+		"wrangler": "^4.16.0"
 	}
-  }
+}

@@ -3,13 +3,13 @@
 	"name": "actor",
 	"main": "src/index.ts",
 	"compatibility_date": "2025-05-20",
-    "compatibility_flags": [],
+	"compatibility_flags": [],
 	"migrations": [
 		{
 			"new_sqlite_classes": [
 				"MyRPCActor",
 				"MyStorageActor",
-                "MyAlarmActor",
+				"MyAlarmActor",
 				"MyDurableObject",
 				"MyLocationHintActor"
 			],
@@ -22,7 +22,7 @@
 				"class_name": "MyRPCActor",
 				"name": "MyRPCActor"
 			},
-            {
+			{
 				"class_name": "MyStorageActor",
 				"name": "MyStorageActor"
 			},

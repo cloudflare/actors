@@ -3,12 +3,10 @@
 	"name": "actor-durable-objects",
 	"main": "src/index.ts",
 	"compatibility_date": "2025-05-20",
-    "compatibility_flags": [],
+	"compatibility_flags": [],
 	"migrations": [
 		{
-			"new_sqlite_classes": [
-				"MyDurableObject",
-			],
+			"new_sqlite_classes": ["MyDurableObject"],
 			"tag": "v1"
 		}
 	],

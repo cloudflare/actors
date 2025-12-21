@@ -1,20 +1,20 @@
 {
-  "name": "actor-storage",
-  "private": true,
-  "version": "0.0.0",
-  "main": "../../dist/storage/src/index.js",
-  "types": "../../dist/storage/src/index.d.ts",
-  "scripts": {
-    "build": "tsc -p .",
-    "test": "vitest --run"
-  },
-  "devDependencies": {
-    "@cloudflare/vite-plugin": "1.12.3",
-    "@cloudflare/vitest-pool-workers": "^0.8.36",
-    "@cloudflare/workers-types": "^4.20250610.0",
-    "typescript": "^5.5.2",
-    "vite": "^6.3.5",
-    "vitest": "~3.1.0",
-    "wrangler": "^4.16.0"
-  }
+	"name": "actor-storage",
+	"private": true,
+	"version": "0.0.0",
+	"main": "../../dist/storage/src/index.js",
+	"types": "../../dist/storage/src/index.d.ts",
+	"scripts": {
+		"build": "tsc -p .",
+		"test": "vitest --run"
+	},
+	"devDependencies": {
+		"@cloudflare/vite-plugin": "1.12.3",
+		"@cloudflare/vitest-pool-workers": "^0.8.36",
+		"@cloudflare/workers-types": "^4.20250610.0",
+		"typescript": "^5.5.2",
+		"vite": "^6.3.5",
+		"vitest": "~3.1.0",
+		"wrangler": "^4.16.0"
+	}
 }

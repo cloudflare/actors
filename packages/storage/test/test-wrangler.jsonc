@@ -1,21 +1,19 @@
 {
-    "name": "actors-storage-tests",
-    "main": "./test-worker.ts",
-    "compatibility_date": "2025-05-25",
-    "durable_objects": {
-        "bindings": [
-            {
-                "name": "SQL_MIGRATIONS_DO",
-                "class_name": "SQLMigrationsDO"
-            }
-        ]
-    },
-    "migrations": [
-        {
-            "tag": "v1",
-            "new_sqlite_classes": [
-                "SQLMigrationsDO"
-            ]
-        }
-    ]
+	"name": "actors-storage-tests",
+	"main": "./test-worker.ts",
+	"compatibility_date": "2025-05-25",
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "SQL_MIGRATIONS_DO",
+				"class_name": "SQLMigrationsDO"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_sqlite_classes": ["SQLMigrationsDO"]
+		}
+	]
 }

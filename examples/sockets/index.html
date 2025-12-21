@@ -50,7 +50,7 @@
         
         function connect() {
             const sessionId = getUrlParameter('id') || generateRandomId();
-            const hasClientId = getUrlParameter('id') !== null;
+            const _hasClientId = getUrlParameter('id') !== null;
                         
             if (ws) {
                 ws.close();
@@ -78,7 +78,7 @@
             };
         }
 
-        function sendMessage() {
+        function _sendMessage() {
             const messageInput = document.getElementById('messageInput');
             const message = messageInput.value.trim();
             
@@ -92,7 +92,7 @@
             }
         }
 
-        function disconnect() {
+        function _disconnect() {
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.close();
                 statusElement.textContent = 'Status: Disconnected';

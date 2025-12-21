@@ -1,10 +1,14 @@
 {
-  "extends": "../../tsconfig.json",
-  "compilerOptions": {
-    "outDir": "../../dist/core",
-    "rootDir": ".",
-    "composite": true
-  },
-  "include": ["**/*.ts"],
-  "references": [{ "path": "../storage" }, { "path": "../alarms" }, { "path": "../sockets" }]
+	"extends": "../../tsconfig.json",
+	"compilerOptions": {
+		"outDir": "../../dist/core",
+		"rootDir": ".",
+		"composite": true
+	},
+	"include": ["**/*.ts"],
+	"references": [
+		{ "path": "../storage" },
+		{ "path": "../alarms" },
+		{ "path": "../sockets" }
+	]
 }

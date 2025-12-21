@@ -1,6 +1,6 @@
-import { DurableObject } from 'cloudflare:workers';
-import { Alarms } from '../../../packages/alarms/src';
-import { Storage } from '../../../packages/storage/src';
+import { DurableObject } from "cloudflare:workers";
+import { Alarms } from "../../../packages/alarms/src";
+import { Storage } from "../../../packages/storage/src";
 
 /**
  * -------------------
@@ -12,46 +12,46 @@ import { Storage } from '../../../packages/storage/src';
  */
 
 export class MyDurableObject extends DurableObject<Env> {
-    storage: Storage;
-    alarms: Alarms<this>;
-    
-    constructor(ctx: DurableObjectState, env: Env) {
-        super(ctx, env)
-        this.storage = new Storage(ctx.storage);
-        this.alarms = new Alarms(ctx, this);
-    }
+	storage: Storage;
+	alarms: Alarms<this>;
 
-    async fetch(request: Request): Promise<Response> {
-        this.alarms.schedule(10, "addFromAlarm", [1, 2]);
-        const query = this.storage.sql`SELECT 10;`
-        return new Response(`Query Result: ${JSON.stringify(query)}`);
-    }
+	constructor(ctx: DurableObjectState, env: Env) {
+		super(ctx, env);
+		this.storage = new Storage(ctx.storage);
+		this.alarms = new Alarms(ctx, this);
+	}
 
-    // This method is required to handle alarms
-    alarm(alarmInfo?: any): void | Promise<void> {
-        // Forward the alarm to the alarms handler
-        if (this.alarms) {
-            return this.alarms.alarm(alarmInfo);
-        }
-        return;
-    }
+	async fetch(_request: Request): Promise<Response> {
+		this.alarms.schedule(10, "addFromAlarm", [1, 2]);
+		const query = this.storage.sql`SELECT 10;`;
+		return new Response(`Query Result: ${JSON.stringify(query)}`);
+	}
 
-    // Called from our alarm defined above
-    public async addFromAlarm([a, b]: number[], row: unknown): Promise<number> {
-        console.log(
-            `Alarm triggered, you can view this alarm in your Worker logs: ${a} + ${b}`,
-            { row }
-        );
-        return a + b;
-    }
+	// This method is required to handle alarms
+	alarm(alarmInfo?: any): void | Promise<void> {
+		// Forward the alarm to the alarms handler
+		if (this.alarms) {
+			return this.alarms.alarm(alarmInfo);
+		}
+		return;
+	}
+
+	// Called from our alarm defined above
+	public async addFromAlarm([a, b]: number[], row: unknown): Promise<number> {
+		console.log(
+			`Alarm triggered, you can view this alarm in your Worker logs: ${a} + ${b}`,
+			{ row }
+		);
+		return a + b;
+	}
 }
 
 export default {
-    async fetch(request: Request, env: Env, ctx: ExecutionContext) {
-        const id = env.MyDurableObject.idFromName(new URL(request.url).pathname);
-        const stub = env.MyDurableObject.get(id);
-        const response = await stub.fetch(request);
+	async fetch(request: Request, env: Env, _ctx: ExecutionContext) {
+		const id = env.MyDurableObject.idFromName(new URL(request.url).pathname);
+		const stub = env.MyDurableObject.get(id);
+		const response = await stub.fetch(request);
 
-        return response;
-    },
+		return response;
+	},
 };

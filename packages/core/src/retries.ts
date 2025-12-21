@@ -1,9 +1,9 @@
 export function RetryConditionAlways() {
-  return true;
+	return true;
 }
 
 export function RetryConditionNever() {
-  return false;
+	return false;
 }
 
 /**
@@ -16,67 +16,67 @@ export function RetryConditionNever() {
  * @returns The result of the `fn` function or propagates the last error thrown once `isRetryable` returns false or all retries failed.
  */
 export async function tryWhile<T>(
-  fn: (attempt: number) => Promise<T>,
-  isRetryable: (err: unknown, nextAttempt: number) => boolean,
-  options?: {
-    baseDelayMs?: number;
-    maxDelayMs?: number;
+	fn: (attempt: number) => Promise<T>,
+	isRetryable: (err: unknown, nextAttempt: number) => boolean,
+	options?: {
+		baseDelayMs?: number;
+		maxDelayMs?: number;
 
-    verbose?: boolean;
-  }
+		verbose?: boolean;
+	}
 ): Promise<T> {
-  const baseDelayMs = Math.floor(options?.baseDelayMs ?? 100);
-  const maxDelayMs = Math.floor(options?.maxDelayMs ?? 3000);
-  if (baseDelayMs <= 0 || maxDelayMs <= 0) {
-    throw new Error("baseDelayMs and maxDelayMs must be greater than 0");
-  }
-  if (baseDelayMs >= maxDelayMs) {
-    throw new Error("baseDelayMs must be less than maxDelayMs");
-  }
-  let attempt = 1;
-  while (true) {
-    try {
-      return await fn(attempt);
-    } catch (err) {
-      if (options?.verbose) {
-        console.info({
-          message: "tryWhile",
-          attempt,
-          error: String(err),
-          errorProps: err,
-        });
-      }
-      attempt += 1;
-      if (!isRetryable(err, attempt)) {
-        throw err;
-      }
-      const delay = jitterBackoff(attempt, baseDelayMs, maxDelayMs);
-      await new Promise((resolve) => setTimeout(resolve, delay));
-    }
-  }
+	const baseDelayMs = Math.floor(options?.baseDelayMs ?? 100);
+	const maxDelayMs = Math.floor(options?.maxDelayMs ?? 3000);
+	if (baseDelayMs <= 0 || maxDelayMs <= 0) {
+		throw new Error("baseDelayMs and maxDelayMs must be greater than 0");
+	}
+	if (baseDelayMs >= maxDelayMs) {
+		throw new Error("baseDelayMs must be less than maxDelayMs");
+	}
+	let attempt = 1;
+	while (true) {
+		try {
+			return await fn(attempt);
+		} catch (err) {
+			if (options?.verbose) {
+				console.info({
+					message: "tryWhile",
+					attempt,
+					error: String(err),
+					errorProps: err,
+				});
+			}
+			attempt += 1;
+			if (!isRetryable(err, attempt)) {
+				throw err;
+			}
+			const delay = jitterBackoff(attempt, baseDelayMs, maxDelayMs);
+			await new Promise((resolve) => setTimeout(resolve, delay));
+		}
+	}
 }
 
 export type TryNOptions = {
-  /**
-   * @param err Error thrown by the function.
-   * @param nextAttempt Number of next attempt to make.
-   * @returns Returns true if the error and nextAttempt number is retryable.
-   */
-  isRetryable?: (err: unknown, nextAttempt: number) => boolean;
+	/**
+	 * @param err Error thrown by the function.
+	 * @param nextAttempt Number of next attempt to make.
+	 * @returns Returns true if the error and nextAttempt number is retryable.
+	 */
+	isRetryable?: (err: unknown, nextAttempt: number) => boolean;
 
-  /**
-   * Number of milliseconds to use as multiplier for the exponential backoff.
-   */
-  baseDelayMs?: number;
-  /**
-   * Maximum number of milliseconds to wait.
-   */
-  maxDelayMs?: number;
+	/**
+	 * Number of milliseconds to use as multiplier for the exponential backoff.
+	 */
+	baseDelayMs?: number;
+	/**
+	 * Maximum number of milliseconds to wait.
+	 */
+	maxDelayMs?: number;
 
-  /**
-   * If true, logs the error and attempt number to the console.
-   */
-  verbose?: boolean;
+	/**
+	 * If true, logs the error and attempt number to the console.
+	 */
+	verbose?: boolean;
 };
 
 /**
@@ -90,24 +90,24 @@ export type TryNOptions = {
  * @returns The result of the `fn` function or propagates the last error thrown once `isRetryable` returns false or all retries failed.
  */
 export async function tryN<T>(
-  n: number,
-  fn: (attempt: number) => Promise<T>,
-  options?: TryNOptions
+	n: number,
+	fn: (attempt: number) => Promise<T>,
+	options?: TryNOptions
 ): Promise<T> {
-  if (n <= 0) {
-    throw new Error("n must be greater than 0");
-  }
-  n = Math.floor(n);
+	if (n <= 0) {
+		throw new Error("n must be greater than 0");
+	}
+	n = Math.floor(n);
 
-  return await tryWhile(
-    fn,
-    (err: unknown, nextAttempt: number) => {
-      return (
-        nextAttempt <= n && (options?.isRetryable?.(err, nextAttempt) ?? true)
-      );
-    },
-    options
-  );
+	return await tryWhile(
+		fn,
+		(err: unknown, nextAttempt: number) => {
+			return (
+				nextAttempt <= n && (options?.isRetryable?.(err, nextAttempt) ?? true)
+			);
+		},
+		options
+	);
 }
 
 /**
@@ -119,12 +119,12 @@ export async function tryN<T>(
  * @returns Milliseconds to wait before retrying.
  */
 export function jitterBackoff(
-  attempt: number,
-  baseDelayMs: number,
-  maxDelayMs: number
+	attempt: number,
+	baseDelayMs: number,
+	maxDelayMs: number
 ): number {
-  const attemptUpperBoundMs = Math.min(2 ** attempt * baseDelayMs, maxDelayMs);
-  return Math.floor(Math.random() * attemptUpperBoundMs);
+	const attemptUpperBoundMs = Math.min(2 ** attempt * baseDelayMs, maxDelayMs);
+	return Math.floor(Math.random() * attemptUpperBoundMs);
 }
 
 /**
@@ -133,10 +133,10 @@ export function jitterBackoff(
  * @param err
  */
 export function isErrorRetryable(err: unknown): boolean {
-  const msg = String(err);
-  return (
-    Boolean((err as any)?.retryable) &&
-    !Boolean((err as any)?.overloaded) &&
-    !msg.includes("Durable Object is overloaded")
-  );
+	const msg = String(err);
+	return (
+		Boolean((err as any)?.retryable) &&
+		!(err as any)?.overloaded &&
+		!msg.includes("Durable Object is overloaded")
+	);
 }
