@@ -64,6 +64,7 @@
             };
 
             ws.onmessage = (event) => {
+				console.log('WebSocket message received:', event.data);
                 addMessage('Received', event.data);
             };
 

@@ -1,0 +1,16 @@
+{
+  "name": "actor-devtools",
+  "private": true,
+  "version": "0.0.0",
+  "main": "../../dist/devtools/src/index.js",
+  "types": "../../dist/devtools/src/index.d.ts",
+  "scripts": {
+    "build": "tsc -p .",
+    "test": "vitest --run"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.2",
+    "vite": "^6.3.5",
+    "vitest": "^3.2.4"
+  }
+}

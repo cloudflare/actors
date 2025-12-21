@@ -1,12 +1,8 @@
-import {
-	Actor,
-	type ActorConfiguration,
-	handler,
-} from "../../../packages/core/src";
+import { Actor, ActorConfiguration, handler } from "../../../packages/core/src";
 
 export class MySocketsActor extends Actor<Env> {
 	// This is optional to implement, defaults are shown in below comments
-	static configuration(_request: Request): ActorConfiguration {
+	static configuration(request: Request): ActorConfiguration {
 		return {
 			sockets: {
 				upgradePath: "/ws", // Also defaults to `/ws` when not present,
@@ -18,24 +14,26 @@ export class MySocketsActor extends Actor<Env> {
 		};
 	}
 
-	protected onRequest(_request: Request): Promise<Response> {
+	protected onRequest(request: Request): Promise<Response> {
 		return Promise.resolve(Response.json({ message: "Hello, World!" }));
 	}
 
-	protected async shouldUpgradeWebSocket(_request: Request): Promise<boolean> {
+	protected async shouldUpgradeWebSocket(request: Request): Promise<boolean> {
 		return true;
 	}
 
-	protected onWebSocketConnect(_ws: WebSocket, _request: Request) {
+	protected onWebSocketConnect(ws: WebSocket, request: Request) {
 		console.log("Socket connected");
 	}
 
-	protected onWebSocketDisconnect(_ws: WebSocket) {
+	protected onWebSocketDisconnect(ws: WebSocket) {
 		console.log("Socket disconnected");
 	}
 
-	protected onWebSocketMessage(ws: WebSocket, _message: any) {
+	protected onWebSocketMessage(ws: WebSocket, message: any) {
+		console.log("WebSocket message received:", ws, message);
 		// Echo message back to everyone except the sender
+		console.log(this.sockets);
 		this.sockets.message("Received!", "*", [ws]);
 	}
 }
