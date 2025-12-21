@@ -1,8 +1,12 @@
 import { DurableObject, env, WorkerEntrypoint } from "cloudflare:workers";
 import { Alarms } from "../../alarms/src/index";
-import { Sockets } from "../../sockets/src/index";
 import { Observability } from "../../devtools/src/index";
-import { Persist, PERSISTED_VALUES, initializePersistedProperties, persistProperty } from "./persist";
+import { Sockets } from "../../sockets/src/index";
+import {
+	initializePersistedProperties,
+	PERSISTED_VALUES,
+	Persist,
+} from "./persist";
 
 export { Persist };
 export { Observability };
