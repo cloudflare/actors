@@ -9,7 +9,7 @@
     "test": "vitest --run"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "1.12.3",
+    "@cloudflare/vite-plugin": "1.21.1",
     "@cloudflare/vitest-pool-workers": "^0.8.36",
     "@cloudflare/workers-types": "^4.20250610.0",
     "typescript": "^5.5.2",
