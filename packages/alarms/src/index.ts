@@ -85,8 +85,8 @@ export class Alarms<P extends DurableObject<any>> {
                   }
               }
       
-              // Execute any pending alarms and schedule the next alarm
-              await this.alarm();
+              // Only schedule; the runtime calls alarm() after blockConcurrencyWhile.
+              await this._scheduleNextAlarm();
             });
         });
     }
@@ -266,11 +266,10 @@ export class Alarms<P extends DurableObject<any>> {
     }
 
     private async _scheduleNextAlarm() {
-        // Find the next schedule that needs to be executed
+        // Include past-due alarms; setAlarm() with a past time fires immediately.
         const result = this.sql`
-          SELECT time, COALESCE(identifier, 'default') as identifier FROM _actor_alarms 
-          WHERE time > ${Math.floor(Date.now() / 1000)}
-          ORDER BY time ASC 
+          SELECT time, COALESCE(identifier, 'default') as identifier FROM _actor_alarms
+          ORDER BY time ASC
           LIMIT 1
         `;
         if (!result || !this.storage) return;
@@ -314,19 +313,23 @@ export class Alarms<P extends DurableObject<any>> {
             console.error(`error executing callback "${row.callback}"`, e);
           }
           
-          if (row.type === "cron") {
-            // Update next execution time for cron schedules
-            const nextExecutionTime = getNextCronTime(row.cron);
-            const nextTimestamp = Math.floor(nextExecutionTime.getTime() / 1000);
-    
-            this.sql`
-              UPDATE _actor_alarms SET time = ${nextTimestamp} WHERE id = ${row.id}
-            `;
-          } else {
-            // Delete one-time schedules after execution
-            this.sql`
-              DELETE FROM _actor_alarms WHERE id = ${row.id}
-            `;
+          try {
+            if (row.type === "cron") {
+              // Update next execution time for cron schedules
+              const nextExecutionTime = getNextCronTime(row.cron);
+              const nextTimestamp = Math.floor(nextExecutionTime.getTime() / 1000);
+
+              this.sql`
+                UPDATE _actor_alarms SET time = ${nextTimestamp} WHERE id = ${row.id}
+              `;
+            } else {
+              // Delete one-time schedules after execution
+              this.sql`
+                DELETE FROM _actor_alarms WHERE id = ${row.id}
+              `;
+            }
+          } catch (e) {
+            console.error(`error cleaning up schedule "${row.id}"`, e);
           }
         }
     
