@@ -85,8 +85,8 @@ export class Alarms<P extends DurableObject<any>> {
                   }
               }
       
-              // Execute any pending alarms and schedule the next alarm
-              await this.alarm();
+              // Don't execute callbacks; the runtime delivers the alarm after init.
+              await this._scheduleNextAlarm();
             });
         });
     }
@@ -268,9 +268,9 @@ export class Alarms<P extends DurableObject<any>> {
     private async _scheduleNextAlarm() {
         // Find the next schedule that needs to be executed
         const result = this.sql`
-          SELECT time, COALESCE(identifier, 'default') as identifier FROM _actor_alarms 
+          SELECT time, COALESCE(identifier, 'default') as identifier FROM _actor_alarms
           WHERE time > ${Math.floor(Date.now() / 1000)}
-          ORDER BY time ASC 
+          ORDER BY time ASC
           LIMIT 1
         `;
         if (!result || !this.storage) return;
@@ -318,7 +318,7 @@ export class Alarms<P extends DurableObject<any>> {
             // Update next execution time for cron schedules
             const nextExecutionTime = getNextCronTime(row.cron);
             const nextTimestamp = Math.floor(nextExecutionTime.getTime() / 1000);
-    
+
             this.sql`
               UPDATE _actor_alarms SET time = ${nextTimestamp} WHERE id = ${row.id}
             `;
