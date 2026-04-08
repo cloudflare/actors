@@ -12,7 +12,7 @@
     "author": "",
     "dependencies": {
         "@cloudflare/vite-plugin": "^1.3.1",
-        "hono": "^4.9.6",
+        "hono": "^4.12.12",
         "vite": "^6.3.5"
     }
 }
