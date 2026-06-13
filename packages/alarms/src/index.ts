@@ -298,7 +298,7 @@ export class Alarms<P extends DurableObject<any>> {
 
           try {
             const identifier = row.identifier || 'default';
-            (this.parent as any).setName(identifier);
+            await (this.parent as any).setName(identifier);
           } catch (error) {
             console.error(`error setting identifier`, error);
           }
