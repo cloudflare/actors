@@ -7,6 +7,8 @@ import { Persist, PERSISTED_VALUES, initializePersistedProperties, persistProper
 export { Persist };
 
 export * from "./retries";
+export { PuppeteerScraper, PuppeteerEnv } from "./PuppeteerScraper";
+export { ParallelChunker } from "./ParallelChunker";
 
 /**
  * Alias type for DurableObjectState to match the adopted Actor nomenclature.

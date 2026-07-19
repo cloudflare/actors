@@ -165,6 +165,13 @@ export class SQLSchemaMigrations {
     const doSql = this.#_config.doStorage.sql;
     const migrationsToRun = this.#_migrations.slice(idx);
 
+    try {
+      doSql.exec("PRAGMA journal_mode=WAL;");
+      doSql.exec("PRAGMA synchronous=NORMAL;");
+    } catch (e) {
+      console.error("Failed to execute SQLite performance PRAGMAs:", e);
+    }
+
     await this.#_config.doStorage.transaction(async () => {
       let _lastMigrationMonotonicId = this.#_lastMigrationMonotonicId;
 
