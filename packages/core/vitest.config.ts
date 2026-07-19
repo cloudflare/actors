@@ -1,5 +1,10 @@
-import { defineConfig } from "vitest/config";
+import { defineConfig } from 'vitest/config';
+import { resolve } from 'path';
 
 export default defineConfig({
-  test: {},
+  test: {
+    alias: {
+      'cloudflare:workers': resolve(__dirname, './__mocks__/cloudflare-workers.js')
+    }
+  }
 });

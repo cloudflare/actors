@@ -1,4 +1,4 @@
-import { Actor } from "./index";
+import { Actor } from "./actor";
 
 export class ParallelChunker<E = any> extends Actor<E> {
   /**
